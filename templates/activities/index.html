@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Actividades{% endblock %}
+{% block breadcrumb %}Actividades{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Actividades</h1>
+    <p class="page-subtitle">Nivel 3 del ABC — tareas concretas que consumen recursos y generan inductores</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            onclick="showHelpModal('Actividades ABC',
+              'Una actividad es una tarea concreta realizada en un centro de actividad. Cada actividad tiene un inductor que mide cuánto consume cada objeto de costo. Ejemplos: Corte de tela (inductor: metros cortados), Inspección de calidad (inductor: unidades inspeccionadas), Configuración de máquinas (inductor: número de setups).')">
+      <i class="ti ti-help-circle"></i> Ayuda
+    </button>
+    <button class="btn btn-secondary btn-sm"
+            onclick="CostosChatbox.sendQuick('Sugiere actividades típicas para centros de actividad en el sector {{ current_sector }}', 'abc')">
+      <i class="ti ti-robot"></i> Sugerir con IA
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('activities')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+    <a href="{{ url_for('activities.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Nueva actividad
+    </a>
+  </div>
+</div>
+
+{% if not centers %}
+<div class="alert alert-warning">
+  <i class="ti ti-alert-triangle"></i>
+  Primero debes crear <a href="{{ url_for('activity_centers.new') }}">Centros de Actividad</a> antes de agregar actividades.
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-activity" style="color:var(--primary)"></i> Lista de actividades</span>
+    <span class="badge badge-neutral">{{ activities|length }}</span>
+  </div>
+  {% if activities %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Código</th><th>Actividad</th><th>Centro</th><th>Inductor</th><th class="number">Total inductor</th><th class="number">Costo asignado</th><th class="actions">Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for a in activities %}
+        <tr>
+          <td><span class="badge badge-neutral">{{ a.code }}</span></td>
+          <td style="font-weight:500">{{ a.name }}</td>
+          <td><span class="badge badge-info">{{ a.center_name }}</span></td>
+          <td style="font-size:12px;color:var(--text-secondary)">{{ a.driver_type or '—' }}</td>
+          <td class="number">{{ a.driver_total or 0 }}</td>
+          <td class="number">{{ a.total_cost | currency }}</td>
+          <td class="actions">
+            <a href="{{ url_for('activities.edit', aid=a.id) }}" class="btn btn-ghost btn-sm btn-icon"><i class="ti ti-edit"></i></a>
+            <form method="POST" action="{{ url_for('activities.delete', aid=a.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar esta actividad?"><i class="ti ti-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="ti ti-activity"></i>
+    <h3>Sin actividades registradas</h3>
+    <p>Las actividades son el corazón del sistema ABC. Define qué hace cada centro de actividad.</p>
+    <a href="{{ url_for('activities.new') }}" class="btn btn-primary"><i class="ti ti-plus"></i> Crear actividad</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

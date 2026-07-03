@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo Modelo ABC{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('abc.index') }}">ABC</a> / Nuevo{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Nuevo Modelo ABC</h1><p class="page-subtitle">Define los parámetros del modelo de costeo</p></div>
+  <div class="page-actions"><a href="{{ url_for('abc.index') }}" class="btn btn-secondary"><i class="ti ti-arrow-left"></i> Volver</a></div>
+</div>
+
+<div style="max-width:640px">
+<div class="card">
+  <div class="card-header"><span class="card-title"><i class="ti ti-calculator" style="color:var(--primary)"></i> Parámetros del modelo</span></div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('abc.new') }}">
+      <div class="form-group">
+        <label class="form-label">Nombre del modelo <span class="required">*</span></label>
+        <input type="text" name="name" class="form-control" required placeholder="Ej: Modelo ABC Enero 2025 — Textil">
+      </div>
+
+      <div style="padding:14px;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:18px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px">
+          <i class="ti ti-percentage" style="color:var(--primary)"></i>
+          Distribución de gastos (% sobre costo de producción)
+          <span class="help-btn" data-help="Los gastos administrativos, de ventas y financieros se distribuyen a cada objeto de costo en proporción a su costo de producción ABC." data-help-title="Distribución de gastos">?</span>
+        </div>
+        <div class="form-grid-3">
+          <div class="form-group mb-0"><label class="form-label">G. Administrativos (%)</label><input type="number" name="admin_expense" class="form-control" step="0.1" min="0" value="0"></div>
+          <div class="form-group mb-0"><label class="form-label">G. Ventas (%)</label><input type="number" name="sales_expense" class="form-control" step="0.1" min="0" value="0"></div>
+          <div class="form-group mb-0"><label class="form-label">G. Financieros (%)</label><input type="number" name="financial_expense" class="form-control" step="0.1" min="0" value="0"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Margen de utilidad deseado (%)</label>
+        <input type="number" name="desired_margin" class="form-control" step="0.1" min="0" value="20">
+      </div>
+
+      <!-- Imagen del producto/modelo -->
+      <div class="form-group">
+        <label class="form-label">Imagen del producto (opcional)</label>
+        <div id="abc-img-preview" style="display:none;margin-bottom:8px">
+          <img id="abc-img-thumb" src="" style="max-height:120px;border-radius:8px;border:1px solid var(--border)">
+        </div>
+        <input type="file" id="abc-img-file" accept="image/*" style="display:none"
+               onchange="uploadImg('abc-img-file','abc-img-preview','abc-img-thumb','abc-image-path')">
+        <input type="hidden" name="image_path" id="abc-image-path">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('abc-img-file').click()">
+          <i class="ti ti-photo"></i> Seleccionar imagen
+        </button>
+        <span class="form-hint">PNG, JPG, WEBP — se mostrará en la ficha del modelo</span>
+      </div>
+
+      <div style="background:var(--primary-xlight);border-radius:var(--radius-md);padding:12px;margin-bottom:18px;font-size:12px;color:var(--text-secondary)">
+        <i class="ti ti-info-circle" style="color:var(--primary)"></i>
+        Después de crear el modelo, asignarás los inductores en 3 pasos:
+        <strong>Paso 1:</strong> Recursos → Centros &nbsp;
+        <strong>Paso 2:</strong> Centros → Actividades &nbsp;
+        <strong>Paso 3:</strong> Actividades → Objetos de Costo
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button type="submit" class="btn btn-primary"><i class="ti ti-arrow-right"></i> Crear y continuar</button>
+        <a href="{{ url_for('abc.index') }}" class="btn btn-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/upload_img.js') }}"></script>
+{% endblock %}

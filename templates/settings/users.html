@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% block title %}Usuarios y Permisos{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('settings.index') }}">Configuración</a> / Usuarios{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Usuarios y Permisos</h1>
+    <p class="page-subtitle">Gestiona quién accede a {{ current_company }} y qué puede hacer</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('settings.index') }}" class="btn btn-secondary btn-sm">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<!-- Usuario propietario -->
+<div class="card mb-2" style="margin-bottom:20px">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-crown" style="color:var(--primary)"></i> Propietario</span>
+  </div>
+  <div class="card-body" style="display:flex;align-items:center;gap:14px">
+    <div style="width:40px;height:40px;background:var(--primary);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">
+      {{ owner.full_name[0] | upper if owner else '?' }}
+    </div>
+    <div>
+      <div style="font-weight:600">{{ owner.full_name if owner else '—' }}</div>
+      <div style="font-size:12px;color:var(--text-secondary)">{{ owner.email if owner else '—' }}</div>
+    </div>
+    <span class="badge badge-primary" style="margin-left:auto">Administrador</span>
+  </div>
+</div>
+
+<!-- Usuarios invitados -->
+<div class="card mb-2" style="margin-bottom:20px">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-users" style="color:var(--primary)"></i> Usuarios con acceso</span>
+    <span class="badge badge-neutral">{{ guests|length }}</span>
+  </div>
+  {% if guests %}
+  <div class="table-wrap">
+    <table class="table" style="font-size:13px">
+      <thead>
+        <tr><th>Usuario</th><th>Rol</th><th>Módulos</th><th>Desde</th><th class="actions">Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for g in guests %}
+        <tr>
+          <td>
+            <div style="font-weight:500">{{ g.full_name }}</div>
+            <div style="font-size:11px;color:var(--text-secondary)">{{ g.email }}</div>
+          </td>
+          <td>
+            <span class="badge {{ 'badge-primary' if g.role=='admin' else 'badge-success' if g.role=='editor' else 'badge-neutral' }}">
+              {{ g.role }}
+            </span>
+          </td>
+          <td style="font-size:12px;color:var(--text-secondary)">
+            {% if g.modules == 'all' %}
+              Todos
+            {% else %}
+              {{ g.modules.split(',') | map('replace', ':write', ' (editar)') | map('replace', ':read', ' (ver)') | join(', ') }}
+            {% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--text-secondary)">{{ g.created_at[:10] if g.created_at else '—' }}</td>
+          <td class="actions">
+            <button class="btn btn-secondary btn-sm" onclick="openEditModal({{ g.id }}, '{{ g.role }}', '{{ g.modules }}')">
+              <i class="ti ti-edit"></i> Editar permisos
+            </button>
+            <form method="POST" action="{{ url_for('users_mgmt.remove_user', cuid=g.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Remover a {{ g.full_name }}?">
+                <i class="ti ti-user-minus"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state" style="padding:30px">
+    <i class="ti ti-users"></i>
+    <p>Solo tú tienes acceso. Invita a colaboradores.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Invitar nuevo usuario -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-user-plus" style="color:var(--primary)"></i> Invitar usuario</span>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('users_mgmt.invite') }}">
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Correo electrónico <span class="required">*</span></label>
+          <input type="email" name="email" class="form-control" required placeholder="usuario@empresa.com">
+          <span class="form-hint">Si el usuario no existe, se creará automáticamente</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombre completo</label>
+          <input type="text" name="full_name" class="form-control" placeholder="Solo si es usuario nuevo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contraseña</label>
+          <input type="password" name="password" class="form-control" placeholder="Solo si es usuario nuevo (mín. 6 caracteres)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rol <span class="required">*</span></label>
+          <select name="role" class="form-control" id="role-select" onchange="toggleModules(this.value)">
+            {% for val, label, desc in roles %}
+            <option value="{{ val }}">{{ label }} — {{ desc }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Módulos específicos (solo para rol custom) -->
+      <div id="modules-section" style="display:none;margin-bottom:16px">
+        <label class="form-label">Permisos por módulo</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;padding:12px;background:var(--bg-secondary);border-radius:var(--radius-md)">
+          {% for mod_id, mod_label in modules %}
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px">
+            <span>{{ mod_label }}</span>
+            <select name="level_{{ mod_id }}" class="form-control" style="width:auto;font-size:12px;padding:4px 6px">
+              <option value="">Sin acceso</option>
+              <option value="read">Ver</option>
+              <option value="write">Ver y editar</option>
+            </select>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">
+        <i class="ti ti-user-plus"></i> Invitar usuario
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal editar permisos -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9990;display:none;align-items:center;justify-content:center">
+  <div class="card" style="max-width:500px;width:100%;margin:20px">
+    <div class="card-header">
+      <span class="card-title">Editar permisos</span>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('edit-modal').style.display='none'">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+    <div class="card-body">
+      <form id="edit-form" method="POST">
+        <div class="form-group">
+          <label class="form-label">Rol</label>
+          <select name="role" id="edit-role" class="form-control" onchange="toggleEditModules(this.value)">
+            {% for val, label, desc in roles %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div id="edit-modules-section" style="display:none">
+          <label class="form-label">Permisos por módulo</label>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;padding:10px;background:var(--bg-secondary);border-radius:var(--radius-md)">
+            {% for mod_id, mod_label in modules %}
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px">
+              <span>{{ mod_label }}</span>
+              <select name="level_{{ mod_id }}" class="edit-module-level form-control" data-mod="{{ mod_id }}" style="width:auto;font-size:11px;padding:3px 4px">
+                <option value="">Sin acceso</option>
+                <option value="read">Ver</option>
+                <option value="write">Ver y editar</option>
+              </select>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('edit-modal').style.display='none'">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleModules(role) {
+  document.getElementById('modules-section').style.display = role === 'custom' ? 'block' : 'none';
+}
+function toggleEditModules(role) {
+  document.getElementById('edit-modules-section').style.display = role === 'custom' ? 'block' : 'none';
+}
+function openEditModal(cuid, role, modules) {
+  const modal = document.getElementById('edit-modal');
+  const form  = document.getElementById('edit-form');
+  form.action = `/settings/users/${cuid}/update`;
+  document.getElementById('edit-role').value = role;
+  toggleEditModules(role);
+  // Parsear "modulo:nivel,modulo:nivel" y fijar cada select
+  const levelByMod = {};
+  if (modules && modules !== 'all') {
+    modules.split(',').forEach(entry => {
+      const [mod, lvl] = entry.split(':');
+      if (mod) levelByMod[mod] = lvl || 'read';
+    });
+  }
+  document.querySelectorAll('.edit-module-level').forEach(sel => {
+    sel.value = levelByMod[sel.dataset.mod] || '';
+  });
+  modal.style.display = 'flex';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}{{ structure.name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('structures.index') }}">Estructuras</a> / {{ structure.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">{{ structure.name }}</h1><p class="page-subtitle">{{ structure.period_name or '' }} · {{ structure.origin }}</p></div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm" onclick="CostosChatbox.sendQuick('Analiza esta estructura de costos e identifica oportunidades de reducción', 'abc')"><i class="ti ti-robot"></i> Analizar con IA</button>
+    <a href="{{ url_for('structures.edit', sid=structure.id) }}" class="btn btn-secondary btn-sm">
+      <i class="ti ti-edit"></i> Editar
+    </a>
+    <a href="{{ url_for('structures.export_excel', sid=structure.id) }}" class="btn btn-secondary btn-sm">
+      <i class="ti ti-file-spreadsheet"></i> Excel
+    </a>
+    <a href="{{ url_for('reports.export_pdf', report_type='structure') }}?sid={{ structure.id }}" class="btn btn-secondary btn-sm">
+      <i class="ti ti-file-text"></i> PDF
+    </a>
+    <form method="POST" action="{{ url_for('structures.delete', sid=structure.id) }}" style="display:inline">
+      <button type="submit" class="btn btn-ghost btn-sm" data-confirm="¿Eliminar esta estructura? Se perderán todos sus ítems.">
+        <i class="ti ti-trash"></i> Eliminar
+      </button>
+    </form>
+    <a href="{{ url_for('structures.index') }}" class="btn btn-secondary btn-sm">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+{% set total_unitario = items | sum(attribute='total_cost') %}
+<div class="grid grid-3 mb-2" style="margin-bottom:16px">
+  <div class="stat-card">
+    <div class="stat-label">Costo unitario calculado</div>
+    <div class="stat-value">{{ total_unitario | currency }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Precio de venta</div>
+    <div class="stat-value">{{ structure.sale_price | currency }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Producción mensual</div>
+    <div class="stat-value">{{ structure.monthly_production or 0 }}</div>
+  </div>
+</div>
+
+{% for cat in categories %}
+<div class="card mb-2" style="margin-bottom:16px">
+  <div class="card-header">
+    <span class="card-title">{{ cat.name }}</span>
+    <span class="badge badge-neutral">{{ cat.category_type }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table" style="font-size:13px">
+      <thead><tr><th>Descripción</th><th>Tipo</th><th>Unidad</th><th class="number">Cantidad</th><th class="number">Costo unit.</th><th class="number">Total</th><th></th></tr></thead>
+      <tbody>
+        {% for item in items if item.category_name == cat.name %}
+        <tr>
+          <td>{{ item.description }}</td>
+          <td><span class="badge badge-neutral">{{ item.cost_type }}</span></td>
+          <td>{{ item.unit or '—' }}</td>
+          <td class="number">{{ item.quantity }}</td>
+          <td class="number">{{ item.unit_cost | currency }}</td>
+          <td class="number"><strong>{{ item.total_cost | currency }}</strong></td>
+          <td>
+            <form method="POST" action="{{ url_for('structures.delete_item', sid=structure.id, iid=item.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar este ítem?"><i class="ti ti-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;color:var(--text-light);font-size:12px;padding:12px">Sin ítems en esta categoría</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-footer">
+    <form method="POST" action="{{ url_for('structures.new_item', sid=structure.id) }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <input type="hidden" name="category_id" value="{{ cat.id }}">
+      <div class="form-group mb-0" style="flex:2"><label class="form-label">Descripción</label><input type="text" name="description" class="form-control" required placeholder="Ej: Tela algodón"></div>
+      <div class="form-group mb-0"><label class="form-label">Unidad</label><input type="text" name="unit" class="form-control" style="width:80px" placeholder="KG"></div>
+      <div class="form-group mb-0"><label class="form-label">Cantidad</label><input type="number" name="quantity" class="form-control" style="width:90px" step="0.001" min="0" value="1"></div>
+      <div class="form-group mb-0"><label class="form-label">Costo unit.</label><input type="number" name="unit_cost" class="form-control" style="width:100px" step="0.01" min="0" value="0"></div>
+      <div class="form-group mb-0"><label class="form-label">Tipo</label><select name="cost_type" class="form-control" style="width:110px"><option value="variable">Variable</option><option value="fijo">Fijo</option><option value="semivariable">Semivariable</option></select></div>
+      <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-plus"></i> Agregar</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

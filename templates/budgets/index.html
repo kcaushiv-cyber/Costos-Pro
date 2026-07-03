@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Presupuestos{% endblock %}
+{% block breadcrumb %}Presupuestos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Presupuestos</h1>
+    <p class="page-subtitle">Presupuesto operativo: ventas, producción, MOD, CIF, flujo de caja y deuda</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            onclick="showHelpModal('Módulo de Presupuestos',
+              'El presupuesto operativo integra: 1) Presupuesto de ventas (cantidades × precios), 2) Presupuesto de producción (unidades requeridas), 3) MOD presupuestada (horas × costo), 4) CIF presupuestado (fijo y variable), 5) Servicio de deuda (tabla de amortización), 6) Flujo de caja mensual generado automáticamente.')">
+      <i class="ti ti-help-circle"></i> Ayuda
+    </button>
+    <button class="btn btn-secondary btn-sm"
+            onclick="CostosChatbox.sendQuick('¿Cómo armo un presupuesto operativo paso a paso para mi empresa del sector {{ current_sector }}?', 'presupuestos')">
+      <i class="ti ti-robot"></i> Consultar IA
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('budget_base')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+        <a href="{{ url_for('budgets.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Nuevo presupuesto
+    </a>
+  </div>
+</div>
+
+{% if budgets %}
+<div class="grid-2">
+  {% for b in budgets %}
+  <div class="card">
+    <div class="card-body">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="font-size:15px;font-weight:600">{{ b.name }}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">{{ current_period }}</div>
+        </div>
+        <span class="badge {{ 'badge-success' if b.status=='aprobado' else 'badge-neutral' }}">{{ b.status }}</span>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:14px">
+        <div style="text-align:center">
+          <div style="font-size:18px;font-weight:700;color:var(--primary)">{{ b.total_sales | currency }}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">Ventas totales</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:18px;font-weight:700;color:{{ 'var(--success)' if b.gross_profit and b.gross_profit > 0 else 'var(--danger)' }}">{{ b.gross_profit | currency }}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">Utilidad bruta</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <a href="{{ url_for('budgets.detail', bid=b.id) }}" class="btn btn-primary btn-sm">
+          <i class="ti ti-eye"></i> Ver / Editar
+        </a>
+        <form method="POST" action="{{ url_for('budgets.delete', bid=b.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar este presupuesto?">
+            <i class="ti ti-trash"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    <i class="ti ti-coin"></i>
+    <h3>Sin presupuestos</h3>
+    <p>Crea el presupuesto operativo para proyectar ventas, costos y flujo de caja.</p>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('budget_base')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+        <a href="{{ url_for('budgets.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Crear presupuesto
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

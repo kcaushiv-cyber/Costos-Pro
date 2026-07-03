@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% block title %}Costos de Calidad{% endblock %}
+{% block breadcrumb %}Costos de Calidad{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Costos de Calidad</h1>
+    <p class="page-subtitle">Modelo PAF: Prevención · Evaluación · Falla Interna · Falla Externa</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            onclick="showHelpModal('Modelo PAF de Costos de Calidad',
+              'El modelo PAF clasifica los costos de calidad en 4 categorías: Prevención (capacitación, diseño de calidad), Evaluación (inspección, auditorías), Falla Interna (reprocesos, desperdicios detectados antes de entregar), Falla Externa (garantías, devoluciones, penalidades). La meta es aumentar prevención para reducir fallas.')">
+      <i class="ti ti-help-circle"></i> Ayuda
+    </button>
+    <button class="btn btn-secondary btn-sm" id="btn-classify-all"
+            onclick="CostosChatbox.sendQuick('Sugiere actividades de costos de calidad para el sector {{ current_sector }}: menciona al menos 3 por categoría PAF', 'calidad')">
+      <i class="ti ti-robot"></i> Sugerir con IA
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('quality')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+    <a href="{{ url_for('quality_costs.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Nueva actividad
+    </a>
+  </div>
+</div>
+
+<!-- KPIs PAF -->
+<div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:24px">
+  <div class="kpi-card success">
+    <i class="ti ti-shield kpi-icon"></i>
+    <div class="kpi-label">Prevención</div>
+    <div class="kpi-value">{{ prevention | currency }}</div>
+    <div class="kpi-sub">{{ (prevention / total_all * 100) | round(1) if total_all else 0 }}% del total</div>
+  </div>
+  <div class="kpi-card info">
+    <i class="ti ti-eye kpi-icon"></i>
+    <div class="kpi-label">Evaluación</div>
+    <div class="kpi-value">{{ evaluation | currency }}</div>
+    <div class="kpi-sub">{{ (evaluation / total_all * 100) | round(1) if total_all else 0 }}% del total</div>
+  </div>
+  <div class="kpi-card warning">
+    <i class="ti ti-alert-triangle kpi-icon"></i>
+    <div class="kpi-label">Falla Interna</div>
+    <div class="kpi-value">{{ int_failure | currency }}</div>
+    <div class="kpi-sub">{{ (int_failure / total_all * 100) | round(1) if total_all else 0 }}% del total</div>
+  </div>
+  <div class="kpi-card danger">
+    <i class="ti ti-alert-circle kpi-icon"></i>
+    <div class="kpi-label">Falla Externa</div>
+    <div class="kpi-value">{{ ext_failure | currency }}</div>
+    <div class="kpi-sub">{{ (ext_failure / total_all * 100) | round(1) if total_all else 0 }}% del total</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total costos calidad</div>
+    <div class="kpi-value orange">{{ total_all | currency }}</div>
+    {% if ventas %}
+    <div class="kpi-sub">{{ (total_all / ventas * 100) | round(1) }}% de ventas</div>
+    {% endif %}
+  </div>
+  <div class="kpi-card {{ 'success' if conformance >= nonconform else 'danger' }}">
+    <div class="kpi-label">Conformidad vs Fallas</div>
+    <div class="kpi-value" style="font-size:18px">
+      {{ (conformance / total_all * 100) | round(0) | int if total_all else 0 }}% /
+      {{ (nonconform / total_all * 100) | round(0) | int if total_all else 0 }}%
+    </div>
+    <div class="kpi-sub">Prev+Eval vs Fallas</div>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start">
+
+  <!-- Tabla de actividades -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-list" style="color:var(--primary)"></i> Actividades registradas</span>
+      <span class="badge badge-neutral">{{ costs|length }}</span>
+    </div>
+    {% if costs %}
+    <div class="table-wrap">
+      <table class="table" style="font-size:12.5px">
+        <thead>
+          <tr><th>Actividad</th><th>Categoría</th><th class="number">Mensual</th><th class="number">Anual</th><th class="actions">Acciones</th></tr>
+        </thead>
+        <tbody>
+          {% for c in costs %}
+          <tr>
+            <td>
+              <div style="font-weight:500">{{ c.activity_name }}</div>
+              {% if c.responsible %}<div style="font-size:11px;color:var(--text-secondary)">{{ c.responsible }}</div>{% endif %}
+              {% if c.ai_classified %}<span class="badge badge-info" style="font-size:10px"><i class="ti ti-robot"></i> IA</span>{% endif %}
+            </td>
+            <td>
+              <span class="badge
+                {{ 'badge-success' if c.category == 'prevencion'
+                   else 'badge-info' if c.category == 'evaluacion'
+                   else 'badge-warning' if c.category == 'falla_interna'
+                   else 'badge-danger' }}">
+                {{ c.category | replace('_', ' ') | title }}
+              </span>
+            </td>
+            <td class="number">{{ c.monthly_cost | currency }}</td>
+            <td class="number">{{ c.annual_cost | currency }}</td>
+            <td class="actions">
+              <a href="{{ url_for('quality_costs.edit', qid=c.id) }}" class="btn btn-ghost btn-sm btn-icon">
+                <i class="ti ti-edit"></i>
+              </a>
+              <form method="POST" action="{{ url_for('quality_costs.delete', qid=c.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar?">
+                  <i class="ti ti-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--primary);color:#fff;font-weight:700">
+            <td colspan="2">Total</td>
+            <td class="number">{{ total_all | currency }}</td>
+            <td class="number">{{ (total_all * 12) | currency }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:40px">
+      <i class="ti ti-shield-check"></i>
+      <h3>Sin actividades registradas</h3>
+      <p>Agrega las actividades de calidad de tu empresa para analizar la distribución PAF.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Gráfico PAF + Clasificador IA -->
+  <div>
+    {% if total_all %}
+    <div class="card mb-2" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title"><i class="ti ti-chart-donut" style="color:var(--primary)"></i> Distribución PAF</span></div>
+      <div class="card-body"><canvas id="chart-paf" height="220"></canvas></div>
+    </div>
+    {% endif %}
+
+    <!-- Clasificador IA en tiempo real -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-robot" style="color:var(--primary)"></i> Clasificador IA</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">
+          Ingresa el nombre de una actividad y la IA la clasificará en la categoría PAF correcta.
+        </p>
+        <div class="form-group">
+          <input type="text" id="ai-activity" class="form-control"
+                 placeholder="Ej: Capacitación al personal de producción">
+        </div>
+        <div class="form-group">
+          <textarea id="ai-desc" class="form-control" rows="2"
+                    placeholder="Descripción opcional..."></textarea>
+        </div>
+        <button class="btn btn-primary w-100" onclick="classifyWithAI()">
+          <i class="ti ti-robot"></i> Clasificar con IA
+        </button>
+        <div id="ai-result" style="display:none;margin-top:12px;padding:12px;background:var(--bg-secondary);border-radius:var(--radius-md);font-size:13px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if total_all %}
+new Chart(document.getElementById('chart-paf'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Prevención', 'Evaluación', 'Falla Interna', 'Falla Externa'],
+    datasets: [{
+      data: [{{ prevention }}, {{ evaluation }}, {{ int_failure }}, {{ ext_failure }}],
+      backgroundColor: ['#22C55E', '#3B82F6', '#FACC15', '#DC2626'],
+      borderWidth: 2, borderColor: '#fff'
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: S/ ${ctx.parsed.toLocaleString('es-PE', {minimumFractionDigits:2})}` }}
+    }
+  }
+});
+{% endif %}
+
+async function classifyWithAI() {
+  const name = document.getElementById('ai-activity').value.trim();
+  const desc = document.getElementById('ai-desc').value.trim();
+  if (!name) { showToast('Ingresa el nombre de la actividad', 'warning'); return; }
+
+  const res  = await fetch('/quality-costs/api/classify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ activity_name: name, description: desc })
+  });
+  const data = await res.json();
+  const box  = document.getElementById('ai-result');
+  box.style.display = 'block';
+
+  if (data.success) {
+    const d = data.data;
+    const catColors = { prevencion:'var(--success)', evaluacion:'var(--info)', falla_interna:'var(--warning)', falla_externa:'var(--danger)', no_aplica:'var(--text-secondary)' };
+    box.innerHTML = `
+      <div style="font-weight:600;color:${catColors[d.categoria] || 'var(--primary)'};margin-bottom:6px">
+        → ${d.categoria?.replace('_',' ')?.toUpperCase() || '—'}
+      </div>
+      <div style="margin-bottom:6px">${d.explicacion || ''}</div>
+      <div style="font-size:11px;color:var(--text-secondary)">
+        % ventas típico: ${d.pct_ventas_tipico || '—'} · Recomendación: ${d.recomendacion || '—'}
+      </div>
+    `;
+  } else {
+    box.innerHTML = `<span style="color:var(--danger)">Error: ${data.error}</span>`;
+  }
+}
+
+setTimeout(() => window.CostosProVoice?.sayModule('calidad'), 800);
+</script>
+{% endblock %}

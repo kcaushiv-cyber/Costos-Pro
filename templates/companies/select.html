@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Seleccionar Empresa{% endblock %}
+{% block breadcrumb %}Empresa{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Mis Empresas</h1>
+    <p class="page-subtitle">Selecciona la empresa activa o crea una nueva</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('companies.new') }}" class="btn btn-primary">
+      <i class="ti ti-building-plus"></i> Nueva empresa
+    </a>
+  </div>
+</div>
+
+{% if companies %}
+<div class="grid-2">
+  {% for c in companies %}
+  <div class="card" style="{% if current_company_id == c.id %}border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-light){% endif %}">
+    <div class="card-body">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div style="width:38px;height:38px;border-radius:10px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0">
+              {{ c.business_name[0].upper() }}
+            </div>
+            <div>
+              <div style="font-size:15px;font-weight:600">{{ c.business_name }}</div>
+              {% if c.trade_name %}<div style="font-size:12px;color:var(--text-secondary)">{{ c.trade_name }}</div>{% endif %}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <span class="badge badge-primary">{{ c.sector|title }}</span>
+            {% if c.ruc %}<span class="badge badge-neutral">RUC: {{ c.ruc }}</span>{% endif %}
+            {% if current_company_id == c.id %}
+              <span class="badge badge-success">✓ Activa</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <a href="{{ url_for('companies.set_active', cid=c.id) }}" class="btn btn-primary btn-sm">
+          <i class="ti ti-check"></i> Seleccionar
+        </a>
+        <a href="{{ url_for('companies.settings', cid=c.id) }}" class="btn btn-ghost btn-sm">
+          <i class="ti ti-settings"></i> Configurar
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    <i class="ti ti-building"></i>
+    <h3>No tienes empresas registradas</h3>
+    <p>Crea tu primera empresa para empezar a gestionar costos.</p>
+    <a href="{{ url_for('companies.new') }}" class="btn btn-primary">
+      <i class="ti ti-building-plus"></i> Crear empresa
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

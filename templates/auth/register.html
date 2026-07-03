@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear cuenta — Costos Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-bg"></div>
+  <div class="login-overlay"></div>
+  <div class="login-card" style="max-width:500px">
+    <div class="login-logo">
+      <div class="logo-mark">CP</div>
+      <h1>Costos Pro</h1>
+      <p>Crea tu cuenta gratuita</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat, msg in messages %}
+        <div class="alert alert-{{ 'error' if cat in ('error','danger') else cat }}" style="margin-bottom:12px">
+          <i class="ti ti-alert-circle"></i> {{ msg }}
+        </div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('auth.register') }}">
+      <!-- Datos personales -->
+      <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-secondary);margin-bottom:10px">Datos personales</div>
+      <div class="form-group">
+        <label class="form-label">Nombre completo <span class="required">*</span></label>
+        <input type="text" name="full_name" class="form-control" required
+               placeholder="Juan Pérez García"
+               value="{{ form_data.get('full_name','') }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Correo electrónico <span class="required">*</span></label>
+        <input type="email" name="email" class="form-control" required
+               placeholder="tu@correo.com"
+               value="{{ form_data.get('email','') }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña <span class="required">*</span></label>
+        <div class="password-field">
+          <input type="password" id="password" name="password" class="form-control"
+                 required placeholder="Mínimo 8 caracteres" minlength="8">
+          <button type="button" class="password-toggle" onclick="togglePassword('password',this)">
+            <i class="ti ti-eye"></i>
+          </button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirmar contraseña <span class="required">*</span></label>
+        <input type="password" name="confirm_password" class="form-control"
+               required placeholder="Repite la contraseña" minlength="8">
+      </div>
+
+      <!-- Datos de empresa -->
+      <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-secondary);margin:18px 0 10px">Empresa</div>
+      <div class="form-group">
+        <label class="form-label">Razón social <span class="required">*</span></label>
+        <input type="text" name="business_name" class="form-control" required
+               placeholder="Mi Empresa S.A.C."
+               value="{{ form_data.get('business_name','') }}">
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">RUC <span class="required">*</span></label>
+          <input type="text" name="ruc" class="form-control" required
+                 placeholder="20XXXXXXXXX" maxlength="11"
+                 pattern="\d{11}" title="11 dígitos"
+                 value="{{ form_data.get('ruc','') }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sector <span class="required">*</span></label>
+          <select name="sector" class="form-control" required>
+            <option value="">Seleccionar...</option>
+            {% for s in sectors %}
+              <option value="{{ s }}" {% if form_data.get('sector') == s %}selected{% endif %}>
+                {{ s|title }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100" style="justify-content:center;padding:12px;margin-top:6px">
+        <i class="ti ti-user-plus"></i> Crear cuenta
+      </button>
+    </form>
+
+    <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--text-secondary)">
+      ¿Ya tienes cuenta?
+      <a href="{{ url_for('auth.login') }}" style="color:var(--primary);font-weight:500">Iniciar sesión</a>
+    </div>
+  </div>
+</div>
+<script>
+function togglePassword(id, btn) {
+  const input = document.getElementById(id);
+  const isText = input.type === 'text';
+  input.type = isText ? 'password' : 'text';
+  btn.querySelector('i').className = isText ? 'ti ti-eye' : 'ti ti-eye-off';
+}
+</script>
+</body>
+</html>

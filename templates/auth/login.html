@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión — Costos Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+
+<div class="login-page">
+  <!-- Fondo con imagen y overlay naranja -->
+  <div class="login-bg"></div>
+  <div class="login-overlay"></div>
+
+  <!-- Tarjeta de login -->
+  <div class="login-card">
+
+    <!-- Logo -->
+    <div class="login-logo">
+      <div class="logo-mark">CP</div>
+      <h1>Costos Pro</h1>
+      <p>Bienvenido — sistema inteligente de gestión de costos</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'error' if category in ('error','danger') else category }}" style="margin-bottom:16px">
+            <i class="ti ti-{{ 'check' if category == 'success' else 'alert-circle' }}"></i>
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('auth.login') }}">
+      <div class="form-group">
+        <label class="form-label" for="email">
+          <i class="ti ti-mail" style="font-size:14px;vertical-align:-1px"></i>
+          Correo electrónico
+        </label>
+        <input type="email" id="email" name="email"
+               class="form-control" placeholder="tu@correo.com"
+               required autocomplete="email"
+               value="{{ request.form.get('email', '') }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">
+          <i class="ti ti-lock" style="font-size:14px;vertical-align:-1px"></i>
+          Contraseña
+        </label>
+        <div class="password-field">
+          <input type="password" id="password" name="password"
+                 class="form-control" placeholder="••••••••"
+                 required autocomplete="current-password">
+          <button type="button" class="password-toggle"
+                  onclick="togglePassword('password', this)"
+                  aria-label="Mostrar contraseña">
+            <i class="ti ti-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
+        <a href="{{ url_for('auth.forgot_password') }}"
+           style="font-size:13px;color:var(--primary)">
+          ¿Olvidaste tu contraseña?
+        </a>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100" style="justify-content:center;padding:12px">
+        <i class="ti ti-login"></i>
+        Iniciar sesión
+      </button>
+    </form>
+
+    <div style="text-align:center;margin-top:20px;font-size:13px;color:var(--text-secondary)">
+      ¿No tienes cuenta?
+      <a href="{{ url_for('auth.register') }}" style="color:var(--primary);font-weight:500">
+        Crear cuenta
+      </a>
+    </div>
+
+    <!-- Demo hint -->
+    <div style="margin-top:20px;padding:12px;background:var(--primary-xlight);border-radius:var(--radius-md);font-size:12px;color:var(--text-secondary);text-align:center">
+      <i class="ti ti-info-circle" style="color:var(--primary)"></i>
+      Demo: <strong>demo@costospro.com</strong> / <strong>demo1234</strong>
+    </div>
+
+    <!-- Control de voz -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px">
+      <button id="voice-login-btn"
+              style="background:none;border:1px solid var(--border);border-radius:var(--radius-md);padding:6px 12px;cursor:pointer;font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:5px"
+              onclick="toggleLoginVoice()">
+        <i class="ti ti-volume" id="voice-login-icon"></i>
+        <span id="voice-login-label">Voz activada</span>
+      </button>
+    </div>
+
+  </div><!-- /login-card -->
+</div><!-- /login-page -->
+
+<script src="{{ url_for('static', filename='js/voice.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+  // Saludo al cargar la página
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      if (window.CostosProVoice?.isEnabled()) {
+        window.CostosProVoice.speak(
+          'Bienvenido a Costos Pro, sistema inteligente de gestión de costos.',
+          true
+        );
+      }
+    }, 800);
+    _updateVoiceBtn();
+  });
+
+  function toggleLoginVoice() {
+    window.CostosProVoice?.toggle();
+    _updateVoiceBtn();
+  }
+
+  function _updateVoiceBtn() {
+    const on = window.CostosProVoice?.isEnabled();
+    document.getElementById('voice-login-icon').className = on ? 'ti ti-volume' : 'ti ti-volume-off';
+    document.getElementById('voice-login-label').textContent = on ? 'Voz activada' : 'Voz desactivada';
+  }
+
+  function togglePassword(id, btn) {
+    const input = document.getElementById(id);
+    const isText = input.type === 'text';
+    input.type = isText ? 'password' : 'text';
+    btn.querySelector('i').className = isText ? 'ti ti-eye' : 'ti ti-eye-off';
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Reporte Inventario{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('reports.index') }}">Reportes</a> / Inventario{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Reporte: Inventario</h1><p class="page-subtitle">{{ current_company }}</p></div>
+  <div class="page-actions">
+    <a href="{{ url_for('reports.export_excel', report_type='inventory') }}" class="btn btn-secondary btn-sm"><i class="ti ti-file-spreadsheet"></i> Excel</a>
+    <a href="{{ url_for('reports.index') }}" class="btn btn-ghost btn-sm"><i class="ti ti-arrow-left"></i></a>
+  </div>
+</div>
+
+<div class="kpi-grid" style="margin-bottom:20px">
+  <div class="kpi-card"><div class="kpi-label">Ítems activos</div><div class="kpi-value orange">{{ data.item_list|length }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">Valor total</div><div class="kpi-value">{{ data.total_valor | currency }}</div></div>
+  <div class="kpi-card {{ 'danger' if data.bajo_minimo else 'success' }}">
+    <div class="kpi-label">Bajo stock mínimo</div>
+    <div class="kpi-value">{{ data.bajo_minimo|length }}</div>
+    <div class="kpi-sub">{{ 'Requieren reposición' if data.bajo_minimo else 'Todos en nivel OK' }}</div>
+  </div>
+</div>
+
+{% if data.bajo_minimo %}
+<div class="alert alert-warning mb-2" style="margin-bottom:16px">
+  <i class="ti ti-alert-triangle"></i>
+  <strong>Alertas de stock mínimo:</strong>
+  {% for i in data.bajo_minimo %}
+  <span class="badge badge-danger" style="margin-left:6px">{{ i.name }}: {{ i.current_stock }} / min {{ i.safety_stock }}</span>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card mb-2" style="margin-bottom:20px">
+  <div class="card-header"><span class="card-title"><i class="ti ti-box" style="color:var(--primary)"></i> Stock valorizado</span></div>
+  <div class="table-wrap">
+    <table class="table" style="font-size:13px">
+      <thead><tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Unidad</th><th class="number">Stock</th><th class="number">Costo prom.</th><th class="number">Valor total</th><th>Estado</th></tr></thead>
+      <tbody>
+        {% for i in data.item_list %}
+        {% set bajo = i.safety_stock and (i.current_stock or 0) < (i.safety_stock or 0) %}
+        <tr style="{{ 'background:var(--danger-bg)' if bajo else '' }}">
+          <td><span class="badge badge-neutral">{{ i.code }}</span></td>
+          <td style="font-weight:500">{{ i.name }}</td>
+          <td>{{ i.category }}</td>
+          <td>{{ i.unit_code or '—' }}</td>
+          <td class="number">{{ i.current_stock or 0 }}</td>
+          <td class="number">{{ (i.average_cost or 0) | currency }}</td>
+          <td class="number"><strong>{{ (i.valor_total or 0) | currency }}</strong></td>
+          <td><span class="badge {{ 'badge-danger' if bajo else 'badge-success' }}">{{ '⚠ Bajo' if bajo else 'OK' }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--primary);color:#fff;font-weight:700">
+          <td colspan="6">Total valorizado</td>
+          <td class="number">{{ data.total_valor | currency }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+{% if data.movimientos_recientes %}
+<div class="card">
+  <div class="card-header"><span class="card-title"><i class="ti ti-list" style="color:var(--primary)"></i> Últimos 10 movimientos</span></div>
+  <div class="table-wrap">
+    <table class="table" style="font-size:12.5px">
+      <thead><tr><th>Fecha</th><th>Ítem</th><th>Tipo</th><th class="number">Cantidad</th><th class="number">Costo unit.</th><th class="number">Total</th><th>Referencia</th></tr></thead>
+      <tbody>
+        {% for m in data.movimientos_recientes %}
+        <tr>
+          <td>{{ m.movement_date }}</td>
+          <td>{{ m.item_name }}</td>
+          <td><span class="badge {{ 'badge-success' if m.movement_type=='entrada' else 'badge-danger' if m.movement_type=='salida' else 'badge-neutral' }}">{{ m.movement_type }}</span></td>
+          <td class="number">{{ m.quantity }}</td>
+          <td class="number">{{ m.unit_cost | currency }}</td>
+          <td class="number">{{ m.total_cost | currency }}</td>
+          <td style="font-size:11px;color:var(--text-secondary)">{{ m.reference or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo Ítem{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('kardex.index') }}">Kardex</a> / Nuevo ítem{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Nuevo Ítem de Inventario</h1>
+    <p class="page-subtitle">Registra el ítem con su stock y costo inicial</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('kardex.index') }}" class="btn btn-secondary">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<div style="max-width:640px">
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-box" style="color:var(--primary)"></i> Datos del ítem</span>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('kardex.new_item') }}">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Código <span class="required">*</span></label>
+          <input type="text" name="code" class="form-control" required placeholder="INS001" maxlength="30">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <select name="category" class="form-control">
+            {% for v,l in [('insumo','Insumo / Materia prima'),('producto','Producto terminado'),('semielaborado','Semielaborado'),('activo','Activo / Herramienta')] %}
+              <option value="{{ v }}">{{ l }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Nombre <span class="required">*</span></label>
+        <input type="text" name="name" class="form-control" required placeholder="Ej: Tela algodón blanca">
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Unidad de medida</label>
+          <input type="text" name="unit_name" class="form-control"
+                 list="unit-list" placeholder="Ej: kg, m, unidad, caja..."
+                 autocomplete="off">
+          <datalist id="unit-list">
+            {% for u in units %}
+              <option value="{{ u.name }} ({{ u.code }})">
+            {% endfor %}
+          </datalist>
+          <input type="hidden" name="unit_id" id="unit_id_hidden">
+          <span class="form-hint">Escribe o elige de la lista</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Método de valorización
+            <span class="help-btn"
+              data-help="Costo promedio ponderado: el costo promedio se recalcula en cada entrada. PEPS: primero en entrar, primero en salir — se registra el costo de cada lote por separado."
+              data-help-title="Método de valorización">?</span>
+          </label>
+          <select name="valuation_method" class="form-control">
+            <option value="promedio">Costo promedio ponderado</option>
+            <option value="peps">PEPS (FIFO)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="padding:14px;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:18px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px">
+          <i class="ti ti-package" style="color:var(--primary)"></i> Saldo inicial
+        </div>
+        <div class="form-grid">
+          <div class="form-group mb-0">
+            <label class="form-label">Stock inicial</label>
+            <input type="number" name="initial_stock" class="form-control" step="0.001" min="0" value="0">
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">Costo unitario inicial (S/)</label>
+            <input type="number" name="initial_cost" class="form-control" step="0.0001" min="0" value="0">
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">Fecha del saldo inicial</label>
+            <input type="date" name="initial_date" class="form-control"
+                   value="{{ today }}">
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">Referencia</label>
+            <input type="text" name="initial_reference" class="form-control"
+                   placeholder="Saldo inicial" value="Saldo inicial">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Stock mínimo (alerta)
+          <span class="help-btn"
+            data-help="Cuando el stock baje de este nivel, el sistema mostrará una alerta en el kardex."
+            data-help-title="Stock mínimo">?</span>
+        </label>
+        <input type="number" name="safety_stock" class="form-control" step="0.001" min="0" value="0">
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button type="submit" class="btn btn-primary">
+          <i class="ti ti-device-floppy"></i> Guardar ítem
+        </button>
+        <a href="{{ url_for('kardex.index') }}" class="btn btn-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+{% endblock %}

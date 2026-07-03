@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo Trabajador{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('personal.index') }}">Personal</a> / Nuevo{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Nuevo Trabajador</h1>
+    <p class="page-subtitle">Registra datos del trabajador y calcula su costo mensual automáticamente</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('personal.index') }}" class="btn btn-secondary">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start">
+
+  <!-- Formulario -->
+  <div>
+    <form method="POST" action="{{ url_for('personal.new') }}">
+
+      <div class="card mb-2">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-user" style="color:var(--primary)"></i> Datos personales</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="code">Código <span class="required">*</span>
+                <span class="help-btn" data-help="Código único del trabajador, ej: EMP001" data-help-title="Código">?</span>
+              </label>
+              <input type="text" id="code" name="code" class="form-control" required
+                     placeholder="EMP001" maxlength="20">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="dni">DNI</label>
+              <input type="text" id="dni" name="dni" class="form-control"
+                     placeholder="12345678" maxlength="8">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="full_name">Nombres y apellidos <span class="required">*</span></label>
+            <input type="text" id="full_name" name="full_name" class="form-control" required
+                   placeholder="Juan Pérez García">
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="department_id">Departamento</label>
+              <select id="department_id" name="department_id" class="form-control">
+                <option value="">Sin departamento</option>
+                {% for d in departments %}
+                  <option value="{{ d.id }}">{{ d.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="position_id">Cargo</label>
+              <select id="position_id" name="position_id" class="form-control">
+                <option value="">Sin cargo</option>
+                {% for p in positions %}
+                  <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="labor_type">Tipo de mano de obra <span class="required">*</span>
+                <span class="help-btn"
+                  data-help="MOD: Mano de Obra Directa (trabaja en producción). MOI: Mano de Obra Indirecta (supervisión, mantenimiento). Admin: personal administrativo. Ventas: fuerza de ventas."
+                  data-help-title="Tipo de mano de obra">?</span>
+              </label>
+              <select id="labor_type" name="labor_type" class="form-control" required>
+                <option value="MOD">MOD — Mano de Obra Directa</option>
+                <option value="MOI">MOI — Mano de Obra Indirecta</option>
+                <option value="admin">Administrativo</option>
+                <option value="ventas">Ventas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="contract_type">Tipo de contrato</label>
+              <select id="contract_type" name="contract_type" class="form-control">
+                <option value="indefinido">Indefinido</option>
+                <option value="plazo_fijo">Plazo fijo</option>
+                <option value="locacion">Locación de servicios</option>
+                <option value="practicante">Practicante</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="start_date">Fecha de ingreso</label>
+              <input type="date" id="start_date" name="start_date" class="form-control">
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:16px;padding-top:28px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                <input type="checkbox" id="is_active" name="is_active" checked> Activo
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                <input type="checkbox" id="in_payroll" name="in_payroll" checked> En planilla
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-2">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-coin" style="color:var(--primary)"></i> Remuneraciones</span>
+          <span class="help-btn"
+            data-help="Ingresa el sueldo básico y los demás conceptos. La gratificación (1/6 del básico), CTS y Essalud se calculan automáticamente según la legislación peruana."
+            data-help-title="Cálculo de planilla">?</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="basic_salary">Sueldo básico (S/) <span class="required">*</span></label>
+              <input type="number" id="basic_salary" name="basic_salary" class="form-control"
+                     step="0.01" min="0" placeholder="1025.00" required>
+              <span class="form-hint">Mínimo: S/ 1,025.00</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="bonus">Bonificaciones (S/)</label>
+              <input type="number" id="bonus" name="bonus" class="form-control"
+                     step="0.01" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="family_allowance">Asig. familiar (S/)</label>
+              <input type="number" id="family_allowance" name="family_allowance" class="form-control"
+                     step="0.01" min="0" value="0">
+              <span class="form-hint">S/ 102.50 si aplica</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="other_benefits">Otros beneficios (S/)</label>
+              <input type="number" id="other_benefits" name="other_benefits" class="form-control"
+                     step="0.01" min="0" value="0">
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="available_hours_month">Horas disponibles/mes
+                <span class="help-btn"
+                  data-help="Horas efectivas disponibles al mes. Estándar Perú: 8h × 24 días = 192h. Se usa para calcular el costo por hora."
+                  data-help-title="Horas disponibles">?</span>
+              </label>
+              <input type="number" id="available_hours_month" name="available_hours_month"
+                     class="form-control" step="0.5" min="1" value="192">
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:12px;padding-top:28px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                <input type="checkbox" id="has_sctr" name="has_sctr">
+                SCTR (0.65%)
+                <span class="help-btn"
+                  data-help="Seguro Complementario de Trabajo de Riesgo. Aplica a trabajos de alto riesgo."
+                  data-help-title="SCTR">?</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="notes">Notas</label>
+            <textarea id="notes" name="notes" class="form-control" rows="2"
+                      placeholder="Observaciones adicionales..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button type="submit" class="btn btn-primary">
+          <i class="ti ti-device-floppy"></i> Guardar trabajador
+        </button>
+        <a href="{{ url_for('personal.index') }}" class="btn btn-secondary">Cancelar</a>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Panel de costo calculado (tiempo real) -->
+  <div>
+    <div class="card" style="position:sticky;top:80px">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-calculator" style="color:var(--primary)"></i> Costo calculado</span>
+        <span class="badge badge-primary">Tiempo real</span>
+      </div>
+      <div class="card-body">
+        <table class="table" style="font-size:13px">
+          <tbody>
+            <tr><td>Sueldo básico</td><td class="number" id="prev-basic">S/ 0.00</td></tr>
+            <tr><td>Bonificaciones</td><td class="number" id="prev-bonus">S/ 0.00</td></tr>
+            <tr><td>Asig. familiar</td><td class="number" id="prev-family">S/ 0.00</td></tr>
+            <tr style="background:var(--bg-secondary)">
+              <td>Gratificación (1/6)</td>
+              <td class="number" id="prev-grat">S/ 0.00</td>
+            </tr>
+            <tr style="background:var(--bg-secondary)">
+              <td>CTS mensualizada</td>
+              <td class="number" id="prev-cts">S/ 0.00</td>
+            </tr>
+            <tr style="background:var(--bg-secondary)">
+              <td>Essalud (9%)</td>
+              <td class="number" id="prev-ess">S/ 0.00</td>
+            </tr>
+            <tr style="background:var(--bg-secondary)">
+              <td>SCTR</td>
+              <td class="number" id="prev-sctr">S/ 0.00</td>
+            </tr>
+            <tr style="background:var(--bg-secondary)">
+              <td>Otros beneficios</td>
+              <td class="number" id="prev-other">S/ 0.00</td>
+            </tr>
+            <tr style="background:var(--primary-xlight);font-weight:700">
+              <td>COSTO TOTAL / MES</td>
+              <td class="number text-orange" id="prev-total">S/ 0.00</td>
+            </tr>
+            <tr style="border-top:2px solid var(--primary)">
+              <td style="font-weight:600">Costo por hora</td>
+              <td class="number fw-600" id="prev-hora">S/ 0.00</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:12px;padding:10px;background:var(--primary-xlight);border-radius:var(--radius-md);font-size:12px;color:var(--text-secondary)">
+          <i class="ti ti-info-circle" style="color:var(--primary)"></i>
+          Fórmula: Básico + Gratificación (÷6) + CTS + Essalud (9%) + SCTR + Otros
+        </div>
+
+        <button class="btn btn-ghost btn-sm w-100 mt-1"
+                onclick="CostosChatbox.sendQuick('¿Cómo se calcula la planilla y CTS en Perú?', 'general')">
+          <i class="ti ti-robot"></i> Consultar fórmulas con IA
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Conectar campos adicionales al sistema de cálculo de main.js
+document.getElementById('basic_salary').addEventListener('input', _syncPrevBasic);
+document.getElementById('bonus').addEventListener('input', _syncPrevBonus);
+document.getElementById('family_allowance').addEventListener('input', _syncPrevFamily);
+document.getElementById('other_benefits').addEventListener('input', _syncPrevOther);
+
+function _syncPrevBasic() {
+  const v = parseFloat(document.getElementById('basic_salary').value || 0);
+  document.getElementById('prev-basic').textContent = formatCurrency(v);
+}
+function _syncPrevBonus() {
+  const v = parseFloat(document.getElementById('bonus').value || 0);
+  document.getElementById('prev-bonus').textContent = formatCurrency(v);
+}
+function _syncPrevFamily() {
+  const v = parseFloat(document.getElementById('family_allowance').value || 0);
+  document.getElementById('prev-family').textContent = formatCurrency(v);
+}
+function _syncPrevOther() {
+  const v = parseFloat(document.getElementById('other_benefits').value || 0);
+  document.getElementById('prev-other').textContent = formatCurrency(v);
+}
+</script>
+{% endblock %}

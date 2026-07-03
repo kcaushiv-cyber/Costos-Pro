@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Reporte Calidad{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('reports.index') }}">Reportes</a> / Calidad{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Reporte: Costos de Calidad PAF</h1><p class="page-subtitle">{{ current_company }} · {{ current_period }}</p></div>
+  <div class="page-actions">
+    <a href="{{ url_for('reports.export_excel', report_type='quality') }}" class="btn btn-secondary btn-sm"><i class="ti ti-file-spreadsheet"></i> Excel</a>
+    <a href="{{ url_for('reports.index') }}" class="btn btn-ghost btn-sm"><i class="ti ti-arrow-left"></i></a>
+  </div>
+</div>
+
+<div class="kpi-grid" style="margin-bottom:20px">
+  <div class="kpi-card success"><div class="kpi-label">Prevención</div><div class="kpi-value">{{ data.totals.prevencion | currency }}</div><div class="kpi-sub">{{ ((data.totals.prevencion / data.grand_total * 100) | round(1)) if data.grand_total else 0 }}%</div></div>
+  <div class="kpi-card info"><div class="kpi-label">Evaluación</div><div class="kpi-value">{{ data.totals.evaluacion | currency }}</div><div class="kpi-sub">{{ ((data.totals.evaluacion / data.grand_total * 100) | round(1)) if data.grand_total else 0 }}%</div></div>
+  <div class="kpi-card warning"><div class="kpi-label">Falla Interna</div><div class="kpi-value">{{ data.totals.falla_interna | currency }}</div></div>
+  <div class="kpi-card danger"><div class="kpi-label">Falla Externa</div><div class="kpi-value">{{ data.totals.falla_externa | currency }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">Total calidad</div><div class="kpi-value orange">{{ data.grand_total | currency }}</div><div class="kpi-sub">{{ data.pct_ventas }}% de ventas</div></div>
+  <div class="kpi-card {{ 'danger' if data.pct_fallas > 40 else 'success' }}"><div class="kpi-label">% en fallas</div><div class="kpi-value">{{ data.pct_fallas }}%</div><div class="kpi-sub">Meta: <20%</div></div>
+</div>
+
+<div class="grid-2" style="align-items:start">
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="ti ti-chart-donut" style="color:var(--primary)"></i> Distribución PAF</span></div>
+    <div class="card-body">
+      <canvas id="chart-paf" height="220"></canvas>
+      <div style="margin-top:14px;padding:10px;background:var(--bg-secondary);border-radius:var(--radius-md);font-size:12px">
+        <strong>Conformidad:</strong> {{ data.conformance | currency }} (Prev. + Eval.) &nbsp;|&nbsp;
+        <strong>No conformidad:</strong> {{ data.nonconformance | currency }} (Fallas)
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="ti ti-list" style="color:var(--primary)"></i> Detalle por actividad</span></div>
+    <div class="table-wrap">
+      <table class="table" style="font-size:12.5px">
+        <thead><tr><th>Actividad</th><th>Categoría</th><th class="number">Mensual</th></tr></thead>
+        <tbody>
+          {% for c in data.costs %}
+          <tr>
+            <td>{{ c.activity_name }}</td>
+            <td><span class="badge {{ 'badge-success' if c.category=='prevencion' else 'badge-info' if c.category=='evaluacion' else 'badge-warning' if c.category=='falla_interna' else 'badge-danger' }}" style="font-size:10px">{{ c.category | replace('_',' ') | title }}</span></td>
+            <td class="number">{{ c.monthly_cost | currency }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+new Chart(document.getElementById('chart-paf'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Prevención','Evaluación','Falla Interna','Falla Externa'],
+    datasets:[{ data:[{{ data.totals.prevencion }},{{ data.totals.evaluacion }},{{ data.totals.falla_interna }},{{ data.totals.falla_externa }}], backgroundColor:['#22C55E','#3B82F6','#FACC15','#DC2626'], borderWidth:2, borderColor:'#fff' }]
+  },
+  options:{ responsive:true, plugins:{ legend:{ position:'bottom', labels:{ font:{ size:11 } } } } }
+});
+</script>
+{% endblock %}

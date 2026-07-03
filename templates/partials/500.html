@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>500 — Error del servidor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg-primary)">
+  <div style="text-align:center;padding:40px">
+    <div style="font-size:80px;color:var(--border);line-height:1">
+      <i class="ti ti-server-off"></i>
+    </div>
+    <h1 style="font-size:64px;font-weight:800;color:var(--danger);margin:8px 0 0">500</h1>
+    <h2 style="font-size:20px;font-weight:600;color:var(--text-primary);margin:8px 0">Error interno del servidor</h2>
+    <p style="color:var(--text-secondary);margin:8px 0 24px">Algo salió mal. Intenta recargar la página.</p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <a href="/dashboard" class="btn btn-primary">
+        <i class="ti ti-home"></i> Ir al dashboard
+      </a>
+      <button onclick="location.reload()" class="btn btn-secondary">
+        <i class="ti ti-refresh"></i> Recargar
+      </button>
+    </div>
+  </div>
+</body>
+</html>

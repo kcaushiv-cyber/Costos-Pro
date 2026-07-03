@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block title %}Configuración — {{ company.business_name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('companies.select') }}">Empresas</a> / Configuración{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ company.business_name }}</h1>
+    <p class="page-subtitle">Configuración de empresa y períodos contables</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('companies.select') }}" class="btn btn-secondary">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start">
+
+  <!-- Editar empresa -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-building" style="color:var(--primary)"></i> Datos de la empresa</span>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('companies.settings', cid=company.id) }}">
+        <div class="form-group">
+          <label class="form-label">Razón social <span class="required">*</span></label>
+          <input type="text" name="business_name" class="form-control" required
+                 value="{{ company.business_name }}">
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Nombre comercial</label>
+            <input type="text" name="trade_name" class="form-control"
+                   value="{{ company.trade_name or '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">RUC</label>
+            <input type="text" name="ruc" class="form-control"
+                   value="{{ company.ruc or '' }}" maxlength="11">
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Sector <span class="required">*</span></label>
+            <select name="sector" class="form-control" required>
+              {% for s in sectors %}
+                <option value="{{ s }}" {% if company.sector == s %}selected{% endif %}>{{ s|title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Moneda</label>
+            <select name="currency" class="form-control">
+              <option value="PEN" {% if company.currency == 'PEN' %}selected{% endif %}>PEN — Soles</option>
+              <option value="USD" {% if company.currency == 'USD' %}selected{% endif %}>USD — Dólares</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Teléfono</label>
+            <input type="text" name="phone" class="form-control" value="{{ company.phone or '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Correo</label>
+            <input type="email" name="email" class="form-control" value="{{ company.email or '' }}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Dirección</label>
+          <input type="text" name="address" class="form-control" value="{{ company.address or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tasa IGV</label>
+          <input type="number" name="igv_rate" class="form-control" step="0.01"
+                 value="{{ company.igv_rate or 0.18 }}">
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="ti ti-device-floppy"></i> Guardar cambios
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Períodos -->
+  <div>
+    <div class="card mb-2">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-calendar" style="color:var(--primary)"></i> Períodos contables</span>
+      </div>
+      {% if periods %}
+      <div class="table-wrap">
+        <table class="table" style="font-size:13px">
+          <thead><tr><th>Período</th><th>Fechas</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            {% for p in periods %}
+            <tr>
+              <td style="font-weight:500">{{ p.name }}</td>
+              <td style="color:var(--text-secondary)">{{ p.start_date }} — {{ p.end_date }}</td>
+              <td>
+                <span class="badge {{ 'badge-success' if p.is_active else 'badge-neutral' }}">
+                  {{ 'Activo' if p.is_active else 'Inactivo' }}
+                </span>
+              </td>
+              <td>
+                {% if not p.is_active %}
+                <a href="{{ url_for('companies.set_period', cid=company.id, pid=p.id) }}"
+                   class="btn btn-ghost btn-sm">Activar</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+      <div class="card-footer">
+        <form method="POST" action="{{ url_for('companies.new_period', cid=company.id) }}">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <div class="form-group mb-0">
+              <label class="form-label">Nombre</label>
+              <input type="text" name="name" class="form-control" placeholder="Febrero 2025" required>
+            </div>
+            <div class="form-group mb-0">
+              <label class="form-label">Inicio</label>
+              <input type="date" name="start_date" class="form-control" required>
+            </div>
+            <div class="form-group mb-0">
+              <label class="form-label">Fin</label>
+              <input type="date" name="end_date" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="ti ti-plus"></i> Crear período
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body" style="text-align:center">
+        <button class="btn btn-ghost w-100"
+                onclick="CostosChatbox.sendQuick('¿Cómo estructuro los períodos contables para mi empresa del sector {{ company.sector }}?', 'general')">
+          <i class="ti ti-robot"></i> Consultar IA sobre períodos
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

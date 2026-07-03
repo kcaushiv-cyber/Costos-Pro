@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Editar Estructura{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('structures.index') }}">Estructuras</a> / <a href="{{ url_for('structures.detail', sid=structure.id) }}">{{ structure.name }}</a> / Editar{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Editar Estructura</h1><p class="page-subtitle">{{ structure.name }}</p></div>
+  <div class="page-actions">
+    <a href="{{ url_for('structures.detail', sid=structure.id) }}" class="btn btn-secondary"><i class="ti ti-arrow-left"></i> Volver</a>
+  </div>
+</div>
+<div style="max-width:600px">
+<div class="card"><div class="card-body">
+  <form method="POST" action="{{ url_for('structures.edit', sid=structure.id) }}">
+    <div class="form-group">
+      <label class="form-label">Nombre <span class="required">*</span></label>
+      <input type="text" name="name" class="form-control" required value="{{ structure.name }}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Producto / Servicio</label>
+      <input type="text" name="product_service" class="form-control" value="{{ structure.product_service or '' }}" placeholder="Ej: Camisa algodón talla M">
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Precio de venta (S/)</label>
+        <input type="number" name="sale_price" class="form-control" step="0.01" min="0" value="{{ structure.sale_price or 0 }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Producción mensual (uds)</label>
+        <input type="number" name="monthly_production" class="form-control" step="1" min="0" value="{{ structure.monthly_production or 0 }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Margen deseado (%)</label>
+        <input type="number" name="desired_margin" class="form-control" step="0.1" min="0" value="{{ structure.desired_margin or 0 }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">IGV (%)</label>
+        <input type="number" name="igv_rate" class="form-control" step="0.01" value="{{ ((structure.igv_rate or 0.18) * 100) | round(0) | int }}">
+      </div>
+    </div>
+    <!-- Imagen -->
+    <div class="form-group">
+      <label class="form-label">Imagen del producto</label>
+      {% if structure.image_path %}
+      <div style="margin-bottom:8px">
+        <img src="{{ structure.image_path }}" style="max-height:80px;border-radius:8px;border:1px solid var(--border)">
+      </div>
+      {% endif %}
+      <div id="st-img-preview" style="display:none;margin-bottom:8px">
+        <img id="st-img-thumb" src="" style="max-height:80px;border-radius:8px;border:1px solid var(--border)">
+      </div>
+      <input type="file" id="st-img-file" accept="image/*" style="display:none"
+             onchange="uploadImg('st-img-file','st-img-preview','st-img-thumb','st-image-path')">
+      <input type="hidden" name="image_path" id="st-image-path">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('st-img-file').click()">
+        <i class="ti ti-photo"></i> Cambiar imagen
+      </button>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy"></i> Guardar cambios</button>
+      <a href="{{ url_for('structures.detail', sid=structure.id) }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/upload_img.js') }}"></script>
+{% endblock %}

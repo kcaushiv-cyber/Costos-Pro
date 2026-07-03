@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% block title %}Resultados — {{ model.name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('process_costs.index') }}">Proceso</a> / {{ model.name }} / Resultados{% endblock %}
+
+{% block extra_css %}
+<style>
+.result-section { margin-bottom: 28px; }
+.result-section h3 { font-size:14px; font-weight:600; color:var(--primary); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.dept-result-card { border-left:3px solid var(--primary); }
+.highlight-row { background:var(--primary-xlight); font-weight:600; }
+.total-row { background:var(--primary); color:#fff; font-weight:700; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Resultados — {{ model.name }}</h1>
+    <p class="page-subtitle">Modelo {{ model.model_type }} · {{ model.product_name or '' }}</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-secondary btn-sm"
+            onclick="CostosChatbox.sendQuick('Analiza los resultados de costos por proceso: ¿cómo interpreto el costo unitario y las unidades equivalentes calculadas?', 'proceso')">
+      <i class="ti ti-robot"></i> Analizar con IA
+    </button>
+    <a href="{{ url_for('process_costs.edit', mid=model.id) }}" class="btn btn-ghost btn-sm">
+      <i class="ti ti-edit"></i> Editar datos
+    </a>
+    <a href="{{ url_for('process_costs.index') }}" class="btn btn-secondary btn-sm">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+{% if not calc.success %}
+<div class="alert alert-error">
+  <i class="ti ti-alert-circle"></i>
+  {{ calc.error }}
+</div>
+{% else %}
+
+{% for res in calc.results %}
+<div class="card dept-result-card result-section">
+  <div class="card-header" style="background:var(--bg-dark);color:#fff">
+    <span style="font-size:14px;font-weight:600">
+      Departamento {{ res.dept_order }}: {{ res.name }}
+    </span>
+    <span class="badge {{ 'badge-success' if res.flow.ok else 'badge-danger' }}">
+      {{ '✓ Flujo OK' if res.flow.ok else '⚠ Flujo desequilibrado' }}
+    </span>
+  </div>
+  <div class="card-body">
+
+    <!-- Plan de cantidades -->
+    <div class="result-section">
+      <h3><i class="ti ti-list-numbers"></i> Plan de Cantidades (Flujo Físico)</h3>
+      <div class="grid-2">
+        <div>
+          <table class="table" style="font-size:13px">
+            <thead><tr><th colspan="2">Unidades por contabilizar</th></tr></thead>
+            <tbody>
+              <tr><td>UIIPP (inventario inicial en proceso)</td><td class="number">{{ res.flow.uiipp }}</td></tr>
+              <tr><td>UPROD (unidades producidas / recibidas)</td><td class="number">{{ res.flow.uprod }}</td></tr>
+              {% if res.flow.uag %}<tr><td>UAg (unidades agregadas)</td><td class="number">{{ res.flow.uag }}</td></tr>{% endif %}
+              <tr class="highlight-row"><td>Total por contabilizar</td><td class="number">{{ res.flow.por_contabilizar }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <table class="table" style="font-size:13px">
+            <thead><tr><th colspan="2">Unidades contabilizadas</th></tr></thead>
+            <tbody>
+              <tr><td>UTT (terminadas y transferidas)</td><td class="number">{{ res.flow.utt }}</td></tr>
+              {% if res.flow.utnt %}<tr><td>UTNT (terminadas no transferidas)</td><td class="number">{{ res.flow.utnt }}</td></tr>{% endif %}
+              <tr><td>UIFPP (inventario final en proceso)</td><td class="number">{{ res.flow.uifpp }}</td></tr>
+              {% if res.flow.up %}<tr><td>UP (unidades perdidas)</td><td class="number">{{ res.flow.up }}</td></tr>{% endif %}
+              <tr class="highlight-row"><td>Total contabilizadas</td><td class="number">{{ res.flow.contabilizadas }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unidades equivalentes -->
+    <div class="result-section">
+      <h3><i class="ti ti-equal"></i> Unidades Equivalentes (UE)</h3>
+      <table class="table" style="font-size:13px;max-width:500px">
+        <thead><tr><th>Concepto</th><th class="number">Materiales</th><th class="number">Conversión</th></tr></thead>
+        <tbody>
+          <tr class="highlight-row">
+            <td>UE calculadas</td>
+            <td class="number"><strong>{{ res.ue.ue_mat }}</strong></td>
+            <td class="number"><strong>{{ res.ue.ue_conv }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Costos unitarios -->
+    <div class="result-section">
+      <h3><i class="ti ti-coin"></i> Costos Unitarios (CU)</h3>
+      <table class="table" style="font-size:13px;max-width:600px">
+        <thead><tr><th>Elemento</th><th class="number">Costo total</th><th class="number">÷ UE</th><th class="number">CU</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Materiales (MP)</td>
+            <td class="number">{{ res.cu.cost_mat | currency }}</td>
+            <td class="number">{{ res.ue.ue_mat }}</td>
+            <td class="number">S/ {{ res.cu.cu_mat }}</td>
+          </tr>
+          <tr>
+            <td>Conversión (MOD + CIF)</td>
+            <td class="number">{{ res.cu.cost_conv | currency }}</td>
+            <td class="number">{{ res.ue.ue_conv }}</td>
+            <td class="number">S/ {{ res.cu.cu_conv }}</td>
+          </tr>
+          {% if res.cu.cost_transfer %}
+          <tr>
+            <td>Transferido dpto anterior</td>
+            <td class="number">{{ res.cu.cost_transfer | currency }}</td>
+            <td class="number">—</td>
+            <td class="number">—</td>
+          </tr>
+          {% endif %}
+          <tr class="highlight-row">
+            <td><strong>COSTO UNITARIO TOTAL</strong></td>
+            <td class="number"><strong>{{ (res.cu.cost_mat + res.cu.cost_conv) | currency }}</strong></td>
+            <td class="number">—</td>
+            <td class="number" style="color:var(--primary);font-size:15px"><strong>S/ {{ res.cu.cu_total }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Asignación de costos -->
+    <div class="result-section mb-0">
+      <h3><i class="ti ti-arrows-transfer-down"></i> Asignación de Costos a Salidas</h3>
+      <table class="table" style="font-size:13px;max-width:700px">
+        <thead><tr><th>Destino</th><th class="number">Unidades</th><th class="number">CU</th><th class="number">Costo total</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>UTT — Terminadas y transferidas</td>
+            <td class="number">{{ res.flow.utt }}</td>
+            <td class="number">S/ {{ res.cu.cu_total }}</td>
+            <td class="number"><strong>{{ res.asign.costo_utt | currency }}</strong></td>
+          </tr>
+          {% if res.flow.utnt %}
+          <tr>
+            <td>UTNT — Terminadas no transferidas</td>
+            <td class="number">{{ res.flow.utnt }}</td>
+            <td class="number">S/ {{ res.cu.cu_total }}</td>
+            <td class="number">{{ res.asign.costo_utnt | currency }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td>UIFPP — Inventario final en proceso</td>
+            <td class="number">{{ res.flow.uifpp }}</td>
+            <td class="number" style="color:var(--text-secondary)">ponderado</td>
+            <td class="number">{{ res.asign.costo_uifpp | currency }}</td>
+          </tr>
+          {% if res.flow.up %}
+          <tr>
+            <td>UP — Unidades perdidas (prorrateado en UTT)</td>
+            <td class="number">{{ res.flow.up }}</td>
+            <td class="number">S/ {{ res.cu.cu_total }}</td>
+            <td class="number">{{ res.asign.costo_up | currency }}</td>
+          </tr>
+          {% endif %}
+          <tr class="total-row">
+            <td>TOTAL ASIGNADO</td>
+            <td></td><td></td>
+            <td class="number">{{ res.asign.total_asignado | currency }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+{% endfor %}
+
+{% if calc.success and calc.results %}
+{% set last = calc.results[-1] %}
+<div class="card" style="margin-top:24px;border:2px solid var(--primary);border-radius:var(--radius-lg)">
+  <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:20px 24px">
+    <div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">
+        <i class="ti ti-award" style="color:var(--primary)"></i>
+        Costo unitario del producto terminado
+      </div>
+      <div style="font-size:12px;color:var(--text-muted)">
+        Último departamento: {{ last.name }}
+      </div>
+    </div>
+    <div style="display:flex;gap:32px;flex-wrap:wrap">
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">Materiales</div>
+        <div style="font-size:20px;font-weight:500;color:var(--text-primary)">S/ {{ last.cu.cu_mat }}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">Conversión</div>
+        <div style="font-size:20px;font-weight:500;color:var(--text-primary)">S/ {{ last.cu.cu_conv }}</div>
+      </div>
+      {% if last.cu.cost_transfer > 0 %}
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:2px">Transferido dptos. ant.</div>
+        <div style="font-size:20px;font-weight:500;color:var(--text-primary)">S/ {{ last.cu.cu_transfer if last.cu.cu_transfer is defined else '—' }}</div>
+      </div>
+      {% endif %}
+      <div style="text-align:center;padding:8px 20px;background:var(--primary);border-radius:var(--radius-md)">
+        <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-bottom:2px">Costo unitario total</div>
+        <div style="font-size:26px;font-weight:500;color:#fff">S/ {{ last.cu.cu_total }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+setTimeout(() => {
+  window.CostosProVoice?.speak('Resultados de costos por proceso calculados. Revisa el flujo físico y los costos unitarios por departamento.', true);
+}, 800);
+</script>
+{% endblock %}

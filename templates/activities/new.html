@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Nueva Actividad{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('activities.index') }}">Actividades</a> / Nueva{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Nueva Actividad</h1></div>
+  <div class="page-actions"><a href="{{ url_for('activities.index') }}" class="btn btn-secondary"><i class="ti ti-arrow-left"></i> Volver</a></div>
+</div>
+<div style="max-width:640px">
+<div class="card"><div class="card-body">
+  <form method="POST" action="{{ url_for('activities.new') }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Código <span class="required">*</span></label>
+        <input type="text" name="code" class="form-control" required placeholder="ACT001" maxlength="20">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Centro de actividad <span class="required">*</span></label>
+        <select name="center_id" class="form-control" required>
+          <option value="">Seleccionar...</option>
+          {% for c in centers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nombre de la actividad <span class="required">*</span></label>
+      <input type="text" name="name" class="form-control" required placeholder="Ej: Corte de materia prima">
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Tipo de inductor
+          <span class="help-btn"
+            data-help="El inductor mide el consumo de esta actividad por cada objeto de costo. Ej: una actividad de 'Corte' usa metros lineales como inductor; 'Inspección' usa número de unidades."
+            data-help-title="Inductor de actividad">?</span>
+        </label>
+        <select name="driver_type" class="form-control">
+          <option value="">Sin inductor</option>
+          {% for v,l in driver_types %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Total del inductor
+          <span class="help-btn"
+            data-help="Cantidad total del inductor en el período. Ej: si el inductor es 'metros cortados' y en enero se cortaron 5,000 metros, escribe 5000."
+            data-help-title="Total inductor">?</span>
+        </label>
+        <input type="number" name="driver_total" class="form-control" step="0.01" min="0" value="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Costo total asignado</label>
+        <input type="number" name="total_cost" class="form-control" step="0.01" min="0" value="0" placeholder="0.00">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notas</label>
+      <textarea name="notes" class="form-control" rows="2" placeholder="Descripción, responsable, observaciones..."></textarea>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy"></i> Guardar actividad</button>
+      <a href="{{ url_for('activities.index') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+</div>
+{% endblock %}

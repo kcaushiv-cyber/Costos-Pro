@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block title %}Resultados ABC — {{ model.name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('abc.index') }}">ABC</a> / {{ model.name }} / Resultados{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.results-table { font-size: 12px; }
+.results-table td, .results-table th { padding: 6px 8px; white-space: nowrap; }
+.results-table thead th { background: var(--bg-dark); color: var(--text-on-dark); font-size: 10px; }
+.results-table td:first-child { white-space: normal; min-width: 140px; }
+.diff-positive { color: var(--danger); font-weight: 600; }
+.diff-negative { color: var(--success); font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Resultados ABC</h1>
+    <p class="page-subtitle">{{ model.name }} · Estructura de Costos por Objeto</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-secondary btn-sm"
+            onclick="CostosChatbox.sendQuick('Analiza estos resultados ABC: ¿qué productos tienen costo ABC mayor al tradicional y por qué podría ser?', 'abc')">
+      <i class="ti ti-robot"></i> Analizar con IA
+    </button>
+    <a href="{{ url_for('abc.step1_resources', mid=model.id) }}" class="btn btn-ghost btn-sm">
+      <i class="ti ti-edit"></i> Editar modelo
+    </a>
+    <a href="{{ url_for('abc.index') }}" class="btn btn-secondary btn-sm">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<!-- KPIs totales -->
+<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">
+  <div class="kpi-card">
+    <i class="ti ti-coin kpi-icon"></i>
+    <div class="kpi-label">Costo producción total</div>
+    <div class="kpi-value orange">{{ total_prod | currency }}</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-stack kpi-icon"></i>
+    <div class="kpi-label">Costo total (c/ gastos)</div>
+    <div class="kpi-value">{{ total_cost | currency }}</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-trending-up kpi-icon"></i>
+    <div class="kpi-label">Ventas proyectadas</div>
+    <div class="kpi-value">{{ total_sale | currency }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Objetos calculados</div>
+    <div class="kpi-value">{{ results|length }}</div>
+  </div>
+</div>
+
+<!-- Tabla principal de resultados (replicando estructura del Excel textil) -->
+<div class="card mb-2" style="margin-bottom:24px">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-table" style="color:var(--primary)"></i> Estructura de Costos ABC por Objeto</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table results-table">
+      <thead>
+        <tr>
+          <th rowspan="2">Objeto de Costo</th>
+          <th rowspan="2" class="number">Qty/mes</th>
+          <th colspan="4" style="text-align:center;border-left:2px solid rgba(255,255,255,0.2)">Costos de Producción</th>
+          <th colspan="3" style="text-align:center;border-left:2px solid rgba(255,255,255,0.2)">Gastos</th>
+          <th colspan="3" style="text-align:center;border-left:2px solid rgba(255,255,255,0.2)">Precio de Venta</th>
+          <th colspan="2" style="text-align:center;border-left:2px solid rgba(255,255,255,0.2)">Comparación</th>
+        </tr>
+        <tr>
+          <th class="number" style="border-left:2px solid rgba(255,255,255,0.2)">C. Producción</th>
+          <th class="number">G. Admin</th>
+          <th class="number">G. Ventas</th>
+          <th class="number">Costo Total</th>
+          <th class="number" style="border-left:2px solid rgba(255,255,255,0.2)">Margen</th>
+          <th class="number">V. Venta</th>
+          <th class="number">IGV</th>
+          <th class="number" style="border-left:2px solid rgba(255,255,255,0.2)">P. Venta (mes)</th>
+          <th class="number">P. Venta unit.</th>
+          <th class="number" style="border-left:2px solid rgba(255,255,255,0.2)">C. Unit ABC</th>
+          <th class="number">C. Trad.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+        <tr>
+          <td style="font-weight:500">
+            {{ r.obj_name }}
+            <div style="font-size:11px;color:var(--text-secondary)">{{ r.obj_code }}</div>
+          </td>
+          <td class="number">{{ r.quantity_month }}</td>
+          <td class="number">{{ r.production_cost | currency }}</td>
+          <td class="number" style="color:var(--text-secondary)">{{ r.admin_expense_allocated | currency }}</td>
+          <td class="number" style="color:var(--text-secondary)">{{ r.sales_expense_allocated | currency }}</td>
+          <td class="number" style="font-weight:600">{{ r.total_cost | currency }}</td>
+          <td class="number" style="color:var(--success)">{{ r.margin_amount | currency }}</td>
+          <td class="number">{{ r.sale_value | currency }}</td>
+          <td class="number" style="color:var(--text-secondary)">{{ r.igv_amount | currency }}</td>
+          <td class="number" style="font-weight:700;color:var(--primary);font-size:14px">
+            {{ r.sale_price | currency }}
+          </td>
+          <td class="number" style="font-weight:600">
+            {{ (r.sale_price / r.quantity_month if r.quantity_month else 0) | currency }}
+          </td>
+          <td class="number" style="font-weight:600">{{ r.unit_cost_abc | currency }}</td>
+          <td class="number">
+            {% if r.unit_cost_traditional %}
+              {{ r.unit_cost_traditional | currency }}
+              {% set diff = r.unit_cost_abc - r.unit_cost_traditional %}
+              <div class="{{ 'diff-positive' if diff > 0 else 'diff-negative' }}" style="font-size:11px">
+                {{ '+' if diff > 0 else '' }}{{ diff | round(2) }}
+                ({{ '+' if diff > 0 else '' }}{{ ((diff / r.unit_cost_traditional) * 100) | round(1) }}%)
+              </div>
+            {% else %}
+              <span style="color:var(--text-light)">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--primary);color:#fff;font-weight:700">
+          <td>TOTALES</td>
+          <td></td>
+          <td class="number">{{ total_prod | currency }}</td>
+          <td class="number">{{ results | sum(attribute='admin_expense_allocated') | currency }}</td>
+          <td class="number">{{ results | sum(attribute='sales_expense_allocated') | currency }}</td>
+          <td class="number">{{ total_cost | currency }}</td>
+          <td class="number">{{ results | sum(attribute='margin_amount') | currency }}</td>
+          <td class="number">{{ results | sum(attribute='sale_value') | currency }}</td>
+          <td class="number">{{ results | sum(attribute='igv_amount') | currency }}</td>
+          <td class="number">{{ total_sale | currency }}</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- Gráfico comparativo -->
+{% if results %}
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="ti ti-chart-bar" style="color:var(--primary)"></i> Costo unitario: ABC vs Tradicional</span></div>
+    <div class="card-body"><canvas id="chart-comparison" height="220"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="ti ti-chart-donut" style="color:var(--primary)"></i> Distribución del costo de producción</span></div>
+    <div class="card-body"><canvas id="chart-distribution" height="220"></canvas></div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if results %}
+const labels = {{ results | map(attribute='obj_name') | list | tojson }};
+const abcCosts = {{ results | map(attribute='unit_cost_abc') | list | tojson }};
+const tradCosts = {{ results | map(attribute='unit_cost_traditional') | list | tojson }};
+const prodCosts = {{ results | map(attribute='production_cost') | list | tojson }};
+
+new Chart(document.getElementById('chart-comparison'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      { label: 'C. ABC', data: abcCosts, backgroundColor: '#F97316CC', borderColor: '#F97316', borderWidth: 1, borderRadius: 4 },
+      { label: 'C. Tradicional', data: tradCosts, backgroundColor: '#3B82F6CC', borderColor: '#3B82F6', borderWidth: 1, borderRadius: 4 },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: { y: { ticks: { callback: v => 'S/ ' + v.toFixed(2) } } }
+  }
+});
+
+new Chart(document.getElementById('chart-distribution'), {
+  type: 'doughnut',
+  data: {
+    labels,
+    datasets: [{ data: prodCosts, backgroundColor: ['#F97316','#FACC15','#22C55E','#3B82F6','#8B5CF6','#14B8A6'], borderWidth: 2, borderColor: '#fff' }]
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+});
+{% endif %}
+
+// Anunciar resultado
+setTimeout(() => {
+  window.CostosProVoice?.speak('Cálculo ABC completado. {{ results|length }} objetos de costo procesados.', true);
+}, 800);
+</script>
+{% endblock %}

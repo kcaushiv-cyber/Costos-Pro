@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Historial de Cambios{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('reports.index') }}">Reportes</a> / Historial{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Historial de Cambios</h1>
+    <p class="page-subtitle">Registro de acciones realizadas en {{ current_company }}</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('reports.index') }}" class="btn btn-ghost btn-sm">
+      <i class="ti ti-arrow-left"></i>
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-history" style="color:var(--primary)"></i> Últimas acciones</span>
+    <span class="badge badge-neutral">{{ total }} registros</span>
+  </div>
+  {% if logs %}
+  <div class="table-wrap">
+    <table class="table" style="font-size:13px">
+      <thead>
+        <tr>
+          <th>Fecha/Hora</th><th>Usuario</th><th>Acción</th>
+          <th>Entidad</th><th>Detalle</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td style="font-size:12px;color:var(--text-secondary);white-space:nowrap">
+            {{ log.created_at[:16] if log.created_at else '—' }}
+          </td>
+          <td style="font-weight:500">{{ log.user_name or '—' }}</td>
+          <td>
+            <span class="badge
+              {{ 'badge-success' if log.action in ('create','register') else
+                 'badge-warning' if log.action == 'update' else
+                 'badge-danger'  if log.action == 'delete' else
+                 'badge-primary' if log.action in ('calculate','export') else
+                 'badge-neutral' }}">
+              {{ log.action or '—' }}
+            </span>
+          </td>
+          <td>{{ log.entity_type or '—' }}</td>
+          <td style="font-size:12px;color:var(--text-secondary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            {{ log.new_value or log.old_value or '—' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <!-- Paginación -->
+  {% if total > limit %}
+  <div class="card-footer" style="display:flex;gap:8px;justify-content:center">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}" class="btn btn-secondary btn-sm">← Anterior</a>
+    {% endif %}
+    <span style="padding:6px 12px;font-size:13px">Página {{ page }}</span>
+    {% if page * limit < total %}
+    <a href="?page={{ page + 1 }}" class="btn btn-secondary btn-sm">Siguiente →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="empty-state"><i class="ti ti-history"></i><p>Sin historial registrado aún.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

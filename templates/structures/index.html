@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Estructuras de Costos{% endblock %}
+{% block breadcrumb %}Estructura de Costos{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Estructuras de Costos</h1><p class="page-subtitle">Fichas de costos por producto o servicio</p></div>
+  <div class="page-actions">
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('cost_structure')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+        <a href="{{ url_for('structures.new') }}" class="btn btn-primary"><i class="ti ti-plus"></i> Nueva estructura</a>
+  </div>
+</div>
+{% if structures %}
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Nombre</th><th>Producto</th><th>Período</th><th class="number">Costo unit.</th><th class="number">Precio venta</th><th>Origen</th><th>Estado</th><th class="actions">Acciones</th></tr></thead>
+      <tbody>
+        {% for s in structures %}
+        <tr>
+          <td style="font-weight:500">{{ s.name }}</td>
+          <td>{{ s.product_name or s.product_service or '—' }}</td>
+          <td>{{ s.period_name or '—' }}</td>
+          <td class="number"><strong>{{ s.unit_cost_total | currency }}</strong></td>
+          <td class="number">{{ s.sale_price | currency }}</td>
+          <td><span class="badge badge-neutral">{{ s.origin }}</span></td>
+          <td><span class="badge {{ 'badge-success' if s.status == 'aprobado' else 'badge-warning' if s.status == 'calculado' else 'badge-neutral' }}">{{ s.status }}</span></td>
+          <td class="actions">
+            <a href="{{ url_for('structures.detail', sid=s.id) }}" class="btn btn-primary btn-sm"><i class="ti ti-eye"></i> Ver</a>
+            <a href="{{ url_for('structures.edit', sid=s.id) }}" class="btn btn-secondary btn-sm"><i class="ti ti-edit"></i></a>
+            <a href="{{ url_for('structures.export_excel', sid=s.id) }}" class="btn btn-secondary btn-sm"><i class="ti ti-file-spreadsheet"></i></a>
+            <form method="POST" action="{{ url_for('structures.delete', sid=s.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar esta estructura?"><i class="ti ti-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card"><div class="empty-state"><i class="ti ti-chart-treemap"></i><h3>Sin estructuras de costos</h3><p>Crea tu primera ficha de costos.</p><a href="{{ url_for('structures.new') }}" class="btn btn-primary"><i class="ti ti-plus"></i> Nueva estructura</a></div></div>
+{% endif %}
+{% endblock %}

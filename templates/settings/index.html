@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% block title %}Configuración{% endblock %}
+{% block breadcrumb %}Configuración{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Configuración</h1>
+    <p class="page-subtitle">Preferencias del sistema, voz y cuenta</p>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start">
+
+  <!-- Voz -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-volume" style="color:var(--primary)"></i> Sistema de voz</span>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">Estado de la voz</label>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+          <button class="btn btn-primary" onclick="enableVoice()">
+            <i class="ti ti-volume"></i> Activar
+          </button>
+          <button class="btn btn-secondary" onclick="disableVoice()">
+            <i class="ti ti-volume-off"></i> Desactivar
+          </button>
+          <span id="voice-status" style="font-size:13px;color:var(--text-secondary)">
+            {{ 'Activada' if session.get('voice_enabled', True) else 'Desactivada' }}
+          </span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Velocidad de lectura</label>
+        <input type="range" id="voice-speed" min="0.5" max="2" step="0.1" value="1.0"
+               class="form-control" style="padding:4px 0"
+               oninput="updateSpeed(this.value)">
+        <span class="form-hint" id="speed-label">1.0x (normal)</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Volumen</label>
+        <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="0.85"
+               class="form-control" style="padding:4px 0"
+               oninput="updateVolume(this.value)">
+        <span class="form-hint" id="volume-label">85%</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="testVoice()">
+        <i class="ti ti-player-play"></i> Probar voz
+      </button>
+    </div>
+  </div>
+
+  <!-- Info IA -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-robot" style="color:var(--primary)"></i> Asistente IA</span>
+    </div>
+    <div class="card-body">
+      <div id="ai-status" style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">
+        Verificando conexión...
+      </div>
+      <table class="table" style="font-size:13px">
+        <tbody>
+          <tr><td style="color:var(--text-secondary)">Modelo</td><td>Claude Sonnet</td></tr>
+          <tr><td style="color:var(--text-secondary)">Agentes disponibles</td><td>10 especializados</td></tr>
+          <tr><td style="color:var(--text-secondary)">API Key</td>
+              <td id="api-key-status">—</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px;padding:10px;background:var(--primary-xlight);border-radius:var(--radius-md);font-size:12px;color:var(--text-secondary)">
+        <i class="ti ti-info-circle" style="color:var(--primary)"></i>
+        Configura <code>ANTHROPIC_API_KEY</code> en el archivo <code>.env</code> para activar todos los agentes IA.
+      </div>
+    </div>
+  </div>
+
+  <!-- Cuenta -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-user" style="color:var(--primary)"></i> Cuenta</span>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+        Sesión activa: <strong>{{ current_user_name }}</strong> ({{ current_user_role }})
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="{{ url_for('companies.select') }}" class="btn btn-secondary btn-sm">
+          <i class="ti ti-building"></i> Cambiar empresa
+        </a>
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost btn-sm">
+          <i class="ti ti-logout"></i> Cerrar sesión
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sistema -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-info-circle" style="color:var(--primary)"></i> Acerca del sistema</span>
+    </div>
+    <div class="card-body">
+      <table class="table" style="font-size:13px">
+        <tbody>
+          <tr><td style="color:var(--text-secondary)">Versión</td><td>Costos Pro v5.0</td></tr>
+          <tr><td style="color:var(--text-secondary)">Fase actual</td><td>Fase 1 — Fundación</td></tr>
+          <tr><td style="color:var(--text-secondary)">BD</td><td>SQLite3 + query_db</td></tr>
+          <tr><td style="color:var(--text-secondary)">Módulos activos</td><td>Dashboard, Empresa, Personal, Productos, Kardex, Estructura</td></tr>
+          <tr><td style="color:var(--text-secondary)">Módulos en Fase 2</td><td>Recursos, Centros, Actividades, Inductores, ABC</td></tr>
+          <tr><td style="color:var(--text-secondary)">Módulos en Fase 3</td><td>Proceso, Presupuestos, Calidad</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Probar correo -->
+<div class="card" style="margin-top:20px">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-mail" style="color:var(--primary)"></i> Correo electrónico</span>
+  </div>
+  <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <div style="font-size:13px;font-weight:600">Configuración SMTP</div>
+      <div style="font-size:12px;color:var(--text-secondary)">
+        Edita <code>E:\costos_pro\.env</code> para cambiar servidor, usuario y contraseña.
+        Usa "Probar" para verificar que los correos llegan correctamente.
+      </div>
+    </div>
+    <button class="btn btn-secondary btn-sm" id="btn-test-mail" onclick="testEmail()">
+      <i class="ti ti-send"></i> Probar correo
+    </button>
+  </div>
+  <div id="mail-test-result" style="display:none;padding:0 20px 14px;font-size:13px"></div>
+</div>
+
+<!-- Usuarios y Permisos -->
+<div class="card" style="margin-top:20px">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-users" style="color:var(--primary)"></i> Usuarios y Permisos</span>
+  </div>
+  <div class="card-body" style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:13px;font-weight:600">Gestión de accesos</div>
+      <div style="font-size:12px;color:var(--text-secondary)">Invita colaboradores y define qué módulos puede ver o editar cada uno.</div>
+    </div>
+    <a href="{{ url_for('users_mgmt.index') }}" class="btn btn-primary btn-sm">
+      <i class="ti ti-users"></i> Gestionar usuarios
+    </a>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Verificar estado IA
+fetch('/ai/health').then(r => r.json()).then(d => {
+  const el = document.getElementById('ai-status');
+  const key = document.getElementById('api-key-status');
+  if (d.ready) {
+    el.innerHTML = '<span style="color:var(--success)">● IA conectada y lista</span>';
+    key.innerHTML = '<span class="badge badge-success">Configurada</span>';
+  } else {
+    el.innerHTML = '<span style="color:var(--danger)">● IA no disponible — falta API Key</span>';
+    key.innerHTML = '<span class="badge badge-danger">No configurada</span>';
+  }
+});
+
+function enableVoice() {
+  if (!window.CostosProVoice?.isEnabled()) window.CostosProVoice?.toggle();
+  document.getElementById('voice-status').textContent = 'Activada';
+}
+function disableVoice() {
+  if (window.CostosProVoice?.isEnabled()) window.CostosProVoice?.toggle();
+  document.getElementById('voice-status').textContent = 'Desactivada';
+}
+function updateSpeed(v) {
+  window.CostosProVoice?.setSpeed(parseFloat(v));
+  document.getElementById('speed-label').textContent = v + 'x';
+}
+function updateVolume(v) {
+  window.CostosProVoice?.setVolume(parseFloat(v));
+  document.getElementById('volume-label').textContent = Math.round(v * 100) + '%';
+}
+function testVoice() {
+  window.CostosProVoice?.speak('Hola, soy el asistente de Costos Pro. La voz está funcionando correctamente.', true);
+}
+
+async function testEmail() {
+  const btn  = document.getElementById('btn-test-mail');
+  const resd = document.getElementById('mail-test-result');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Enviando...';
+  resd.style.display = 'block';
+  resd.innerHTML = '<span style="color:var(--text-secondary)">Conectando con el servidor SMTP...</span>';
+
+  try {
+    const res  = await fetch('/settings/test-email', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      resd.innerHTML = `<span style="color:var(--success)">✓ ${data.message} — revisa tu bandeja de entrada.</span>`;
+      showToast('Correo enviado correctamente', 'success');
+    } else {
+      resd.innerHTML = `<span style="color:var(--danger)">✗ ${data.error}</span><br>
+        <small style="color:var(--text-secondary)">Verifica en <code>.env</code>: MAIL_USERNAME, MAIL_PASSWORD (App Password de Gmail), MAIL_DEFAULT_SENDER.</small>`;
+    }
+  } catch(e) {
+    resd.innerHTML = '<span style="color:var(--danger)">Error de conexión</span>';
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-send"></i> Probar correo';
+}
+</script>
+{% endblock %}

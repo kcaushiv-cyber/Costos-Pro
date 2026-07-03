@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Costos Pro{% endblock %} — Costos Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  {% block extra_css %}{% endblock %}
+  <style>
+    @keyframes fadeIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes spin { to { transform:rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <!-- Módulo actual para el sistema de voz -->
+  <span id="page-module-id" data-module="{{ request.endpoint.split('.')[0] if request.endpoint else 'dashboard' }}" style="display:none"></span>
+
+  <div class="app-layout">
+
+    <!-- ── SIDEBAR ───────────────────────────────────────── -->
+    <nav class="sidebar" id="main-sidebar">
+      <a href="{{ url_for('dashboard.dashboard') }}" class="sidebar-logo">
+        <div class="logo-icon">CP</div>
+        <span class="logo-text">Costos Pro</span>
+      </a>
+
+      <div class="sidebar-nav">
+
+        <div class="sidebar-section">Principal</div>
+        <a href="{{ url_for('dashboard.dashboard') }}"
+           class="sidebar-item {% if request.endpoint and 'dashboard' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-layout-dashboard"></i>
+          <span class="item-text">Dashboard</span>
+        </a>
+        <a href="{{ url_for('companies.select') }}"
+           class="sidebar-item {% if request.endpoint and 'companies' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-building"></i>
+          <span class="item-text">Empresa</span>
+        </a>
+
+        <div class="sidebar-section">Maestros</div>
+        <a href="{{ url_for('personal.index') }}"
+           class="sidebar-item {% if request.endpoint and 'personal' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-users"></i>
+          <span class="item-text">Personal / MOD</span>
+        </a>
+        <a href="{{ url_for('products.index') }}"
+           class="sidebar-item {% if request.endpoint and 'products' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-package"></i>
+          <span class="item-text">Productos/Servicios</span>
+        </a>
+        <a href="{{ url_for('kardex.index') }}"
+           class="sidebar-item {% if request.endpoint and 'kardex' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-box"></i>
+          <span class="item-text">Inventario/Kardex</span>
+        </a>
+
+        <div class="sidebar-section">Sistema ABC</div>
+        <a href="{{ url_for('resources.index') }}"
+           class="sidebar-item {% if request.endpoint and 'resources' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-database"></i>
+          <span class="item-text">Recursos</span>
+        </a>
+        <a href="{{ url_for('activity_centers.index') }}"
+           class="sidebar-item {% if request.endpoint and 'activity_centers' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-layout-grid"></i>
+          <span class="item-text">Ctros. Actividad</span>
+        </a>
+        <a href="{{ url_for('activities.index') }}"
+           class="sidebar-item {% if request.endpoint and 'activities' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-activity"></i>
+          <span class="item-text">Actividades</span>
+        </a>
+        <a href="{{ url_for('cost_objects.index') }}"
+           class="sidebar-item {% if request.endpoint and 'cost_objects' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-target"></i>
+          <span class="item-text">Objetos de Costo</span>
+        </a>
+        <a href="{{ url_for('abc.index') }}"
+           class="sidebar-item {% if request.endpoint and request.endpoint.startswith('abc') %}active{% endif %}">
+          <i class="ti ti-calculator"></i>
+          <span class="item-text">Costeo ABC</span>
+        </a>
+
+        <div class="sidebar-section">Módulos de Costo</div>
+        <a href="{{ url_for('process_costs.index') }}"
+           class="sidebar-item {% if request.endpoint and 'process_costs' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-git-branch"></i>
+          <span class="item-text">Costos por Proceso</span>
+        </a>
+        <a href="{{ url_for('budgets.index') }}"
+           class="sidebar-item {% if request.endpoint and 'budgets' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-coin"></i>
+          <span class="item-text">Presupuestos</span>
+        </a>
+        <a href="{{ url_for('quality_costs.index') }}"
+           class="sidebar-item {% if request.endpoint and 'quality_costs' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-shield-check"></i>
+          <span class="item-text">Costos de Calidad</span>
+        </a>
+        <a href="{{ url_for('structures.index') }}"
+           class="sidebar-item {% if request.endpoint and 'structures' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-chart-treemap"></i>
+          <span class="item-text">Estructura Costos</span>
+        </a>
+
+        <div class="sidebar-section">Reportes y Ayuda</div>
+        <a href="{{ url_for('reports.index') }}"
+           class="sidebar-item {% if request.endpoint and request.endpoint.startswith('reports') %}active{% endif %}">
+          <i class="ti ti-file-analytics"></i>
+          <span class="item-text">Reportes</span>
+        </a>
+        <a href="{{ url_for('breakeven.index') }}"
+           class="sidebar-item {% if request.endpoint and 'breakeven' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-scale"></i>
+          <span class="item-text">Punto de Equilibrio</span>
+        </a>
+        <a href="{{ url_for('compare.index') }}"
+           class="sidebar-item {% if request.endpoint and 'compare' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-arrows-diff"></i>
+          <span class="item-text">Comparar Períodos</span>
+        </a>
+        <a href="{{ url_for('import_data.index') }}"
+           class="sidebar-item {% if request.endpoint and 'import_data' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-upload"></i>
+          <span class="item-text">Importar Excel</span>
+        </a>
+        <a href="{{ url_for('reports.history') }}"
+           class="sidebar-item {% if request.endpoint == 'reports.history' %}active{% endif %}">
+          <i class="ti ti-history"></i>
+          <span class="item-text">Historial</span>
+        </a>
+        <a href="{{ url_for('manual.index') }}"
+           class="sidebar-item {% if request.endpoint and 'manual' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-book"></i>
+          <span class="item-text">Manual</span>
+        </a>
+        <a href="{{ url_for('settings.index') }}"
+           class="sidebar-item {% if request.endpoint and 'settings' in request.endpoint %}active{% endif %}">
+          <i class="ti ti-settings"></i>
+          <span class="item-text">Configuración</span>
+        </a>
+
+      </div><!-- /sidebar-nav -->
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">{{ (current_user_name or 'U')[0].upper() }}</div>
+          <div>
+            <div class="user-name">{{ current_user_name or 'Usuario' }}</div>
+            <div class="user-role">{{ current_user_role or 'analista' }}</div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ── MAIN ──────────────────────────────────────────── -->
+    <div class="main-content">
+
+      <!-- Topbar -->
+      <header class="topbar">
+        <button class="topbar-toggle" id="sidebar-toggle"
+                aria-label="Toggle sidebar" title="Colapsar menú">
+          <i class="ti ti-menu-2"></i>
+        </button>
+
+        <div class="topbar-breadcrumb">
+          <a href="{{ url_for('dashboard.dashboard') }}" style="color:var(--text-secondary)">Inicio</a>
+          <i class="ti ti-chevron-right" style="font-size:12px"></i>
+          <span class="current">{% block breadcrumb %}Dashboard{% endblock %}</span>
+        </div>
+
+        {% if current_company %}
+        <a href="{{ url_for('companies.select') }}" class="topbar-company">
+          <span class="company-dot"></span>
+          {{ current_company }}
+          {% if current_period %} · {{ current_period }}{% endif %}
+        </a>
+        {% endif %}
+
+        <div class="topbar-actions">
+          <!-- Voz -->
+          <button class="topbar-btn voice-btn" id="voice-toggle-btn"
+                  onclick="CostosProVoice.toggle()"
+                  title="Activar/desactivar voz"
+                  aria-label="Toggle voz">
+            <i class="ti ti-volume"></i>
+          </button>
+          <!-- Manual -->
+          <a href="{{ url_for('manual.index') }}" class="topbar-btn"
+             title="Manual de usuario" aria-label="Manual">
+            <i class="ti ti-help-circle"></i>
+          </a>
+          <!-- Logout -->
+          <a href="{{ url_for('auth.logout') }}" class="topbar-btn"
+             title="Cerrar sesión" aria-label="Logout">
+            <i class="ti ti-logout"></i>
+          </a>
+        </div>
+      </header>
+
+      <!-- Flash messages -->
+      <div style="padding: 0 28px;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'error' if category in ('error','danger') else category }}" data-auto-dismiss="4000">
+                <i class="ti ti-{{ 'check' if category == 'success' else ('info-circle' if category == 'info' else ('alert-triangle' if category == 'warning' else 'alert-circle')) }}"></i>
+                <span>{{ message }}</span>
+                <button class="alert-close" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:inherit">
+                  <i class="ti ti-x"></i>
+                </button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      <!-- Page content -->
+      <main class="page-content">
+        {% block content %}{% endblock %}
+      </main>
+
+    </div><!-- /main-content -->
+  </div><!-- /app-layout -->
+
+  <!-- Scripts -->
+  <script src="{{ url_for('static', filename='js/ai_generate.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/voice.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

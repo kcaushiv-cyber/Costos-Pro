@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+{% block title %}{{ model.name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('process_costs.index') }}">Proceso</a> / {{ model.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.dept-card { border-left: 3px solid var(--primary); }
+.dept-header { background: var(--bg-dark); color: #fff; padding: 12px 16px; border-radius: var(--radius-md) var(--radius-md) 0 0; display:flex; justify-content:space-between; align-items:center; }
+.dept-header .dept-title { font-size:14px; font-weight:600; }
+.section-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-secondary); margin:14px 0 8px; }
+.flujo-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; }
+.balance-ok   { color:var(--success); font-weight:600; font-size:13px; }
+.balance-err  { color:var(--danger);  font-weight:600; font-size:13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ model.name }}</h1>
+    <p class="page-subtitle">Modelo: <strong>{{ model.model_type }}</strong> · {{ model.product_name or '' }}</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            onclick="CostosChatbox.sendQuick('Verifica el flujo físico del modelo {{ model.model_type }}: UIIPP + UPROD = UTT + UIFPP. ¿Cómo interpreto los resultados?', 'proceso')">
+      <i class="ti ti-robot"></i> Consultar IA
+    </button>
+    <button class="btn btn-success" id="btn-calc" onclick="calcular()">
+      <i class="ti ti-calculator"></i> Calcular resultados
+    </button>
+    <a href="{{ url_for('process_costs.index') }}" class="btn btn-secondary">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<!-- Departamentos existentes -->
+{% for dept in departments %}
+<div class="card dept-card mb-2" style="margin-bottom:18px">
+  <div class="dept-header">
+    <span class="dept-title">Dpto {{ dept.dept_order }}: {{ dept.name }}</span>
+    <form method="POST"
+          action="{{ url_for('process_costs.delete_dept', mid=model.id, did=dept.id) }}"
+          style="display:inline">
+      <button type="submit" class="btn btn-ghost btn-sm btn-icon"
+              style="color:rgba(255,255,255,0.5)"
+              data-confirm="¿Eliminar este departamento?">
+        <i class="ti ti-trash"></i>
+      </button>
+    </form>
+  </div>
+  <div class="card-body">
+    <form method="POST"
+          action="{{ url_for('process_costs.update_dept', mid=model.id, did=dept.id) }}">
+      <div class="form-group">
+        <label class="form-label">Nombre del departamento</label>
+        <input type="text" name="name" class="form-control"
+               value="{{ dept.name }}" style="max-width:300px">
+      </div>
+
+      <!-- Flujo físico -->
+      <div class="section-label">
+        <i class="ti ti-arrows-transfer-up"></i> Flujo Físico (unidades)
+        <span class="help-btn"
+          data-help="Por contabilizar: UIIPP + UPROD{% if model.model_type == 'agregadas' %} + UAg{% endif %}. Contabilizadas: UTT{% if model.model_type == 'protecho' %} + UTNT{% endif %} + UIFPP{% if model.model_type == 'perdidas' %} + UP{% endif %}. Deben ser iguales."
+          data-help-title="Flujo físico">?</span>
+      </div>
+      <div class="flujo-grid">
+        <div class="form-group mb-0">
+          <label class="form-label">UIIPP</label>
+          <input type="number" name="uiipp" class="form-control" step="0.001" min="0"
+                 value="{{ dept.uiipp or 0 }}" oninput="checkBalance(this)">
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">UPROD</label>
+          <input type="number" name="uprod" class="form-control" step="0.001" min="0"
+                 value="{{ dept.uprod or 0 }}" oninput="checkBalance(this)">
+        </div>
+        {% if model.model_type == 'agregadas' %}
+        <div class="form-group mb-0">
+          <label class="form-label">UAg</label>
+          <input type="number" name="uag" class="form-control" step="0.001" min="0"
+                 value="{{ dept.uag or 0 }}" oninput="checkBalance(this)">
+        </div>
+        {% else %}
+        <input type="hidden" name="uag" value="0">
+        {% endif %}
+        <div class="form-group mb-0">
+          <label class="form-label">UTT</label>
+          <input type="number" name="utt" class="form-control" step="0.001" min="0"
+                 value="{{ dept.utt or 0 }}" oninput="checkBalance(this)">
+        </div>
+        {% if model.model_type == 'protecho' %}
+        <div class="form-group mb-0">
+          <label class="form-label">UTNT</label>
+          <input type="number" name="utnt" class="form-control" step="0.001" min="0"
+                 value="{{ dept.utnt or 0 }}" oninput="checkBalance(this)">
+        </div>
+        {% else %}
+        <input type="hidden" name="utnt" value="0">
+        {% endif %}
+        <div class="form-group mb-0">
+          <label class="form-label">UIFPP</label>
+          <input type="number" name="uifpp" class="form-control" step="0.001" min="0"
+                 value="{{ dept.uifpp or 0 }}" oninput="checkBalance(this)">
+        </div>
+        {% if model.model_type == 'perdidas' %}
+        <div class="form-group mb-0">
+          <label class="form-label">UP</label>
+          <input type="number" name="up" class="form-control" step="0.001" min="0"
+                 value="{{ dept.up or 0 }}" oninput="checkBalance(this)">
+        </div>
+        {% else %}
+        <input type="hidden" name="up" value="0">
+        {% endif %}
+      </div>
+
+      <!-- Grado de avance -->
+      <div class="section-label"><i class="ti ti-percentage"></i> Grado de Avance (%)</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div class="form-group mb-0">
+          <label class="form-label">Mat. UIIPP %</label>
+          <input type="number" name="mat_pct_uiipp" class="form-control" step="1" min="0" max="100"
+                 value="{{ dept.mat_pct_uiipp or 0 }}">
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">Conv. UIIPP %</label>
+          <input type="number" name="conv_pct_uiipp" class="form-control" step="1" min="0" max="100"
+                 value="{{ dept.conv_pct_uiipp or 0 }}">
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">Mat. UIFPP %</label>
+          <input type="number" name="mat_pct_uifpp" class="form-control" step="1" min="0" max="100"
+                 value="{{ dept.mat_pct_uifpp or 0 }}">
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">Conv. UIFPP %</label>
+          <input type="number" name="conv_pct_uifpp" class="form-control" step="1" min="0" max="100"
+                 value="{{ dept.conv_pct_uifpp or 0 }}">
+        </div>
+      </div>
+
+      <!-- Costos -->
+      <div class="section-label"><i class="ti ti-coin"></i> Costos del período (S/)</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        <div class="form-group mb-0">
+          <label class="form-label">MP período anterior</label>
+          <input type="number" name="cost_mat_prior" class="form-control" step="0.01" min="0"
+                 value="{{ dept.cost_mat_prior or 0 }}">
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">Conv. período anterior</label>
+          <input type="number" name="cost_conv_prior" class="form-control" step="0.01" min="0"
+                 value="{{ dept.cost_conv_prior or 0 }}">
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">Transferido dpto ant.</label>
+          <input type="number" name="cost_transfer_in" class="form-control" step="0.01" min="0"
+                 value="{{ dept.cost_transfer_in or 0 }}">
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">MP actual</label>
+          <input type="number" name="cost_mat_current" class="form-control" step="0.01" min="0"
+                 value="{{ dept.cost_mat_current or 0 }}">
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">MOD actual</label>
+          <input type="number" name="cost_mod_current" class="form-control" step="0.01" min="0"
+                 value="{{ dept.cost_mod_current or 0 }}">
+        </div>
+        <div class="form-group mb-0">
+          <label class="form-label">CIF actual</label>
+          <input type="number" name="cost_cif_current" class="form-control" step="0.01" min="0"
+                 value="{{ dept.cost_cif_current or 0 }}">
+        </div>
+      </div>
+
+      <!-- Resultados calculados (si ya se calculó) -->
+      {% if dept.cu_total %}
+      <div style="margin-top:14px;padding:10px 14px;background:var(--primary-xlight);border-radius:var(--radius-md);font-size:13px">
+        <strong>Último cálculo:</strong>
+        UE Mat = {{ dept.ue_mat }} · UE Conv = {{ dept.ue_conv }} ·
+        CU Mat = S/ {{ dept.cu_mat | round(4) }} · CU Conv = S/ {{ dept.cu_conv | round(4) }} ·
+        <strong>CU Total = S/ {{ dept.cu_total | round(4) }}</strong>
+      </div>
+      {% endif %}
+
+      <div style="margin-top:14px">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="ti ti-device-floppy"></i> Guardar departamento
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+
+<!-- Agregar nuevo departamento -->
+<div class="card" style="border:2px dashed var(--border)">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-plus" style="color:var(--primary)"></i> Agregar departamento</span>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('process_costs.new_dept', mid=model.id) }}">
+      <div class="form-group" style="max-width:320px">
+        <label class="form-label">Nombre del departamento</label>
+        <input type="text" name="name" class="form-control"
+               placeholder="Ej: Departamento de Tejido">
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">
+        Puedes ingresar los datos numéricos después de crear el departamento.
+      </p>
+      <button type="submit" class="btn btn-secondary">
+        <i class="ti ti-plus"></i> Agregar departamento vacío
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const MODEL_ID = {{ model.id }};
+
+async function calcular() {
+  const btn = document.getElementById('btn-calc');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Calculando...';
+  try {
+    const res  = await fetch(`/process-costs/${MODEL_ID}/calculate`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Cálculo completado', 'success');
+      setTimeout(() => location.href = data.redirect, 600);
+    } else {
+      showToast(data.error || 'Error al calcular', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-calculator"></i> Calcular resultados';
+    }
+  } catch(e) {
+    showToast('Error de conexión', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-calculator"></i> Calcular resultados';
+  }
+}
+
+function checkBalance(input) {
+  const form   = input.closest('form');
+  const get    = n => parseFloat(form.querySelector(`[name="${n}"]`)?.value || 0);
+  const model  = '{{ model.model_type }}';
+  const por    = get('uiipp') + get('uprod') + (model === 'agregadas' ? get('uag') : 0);
+  const conta  = get('utt')
+               + (model === 'protecho' ? get('utnt') : 0)
+               + get('uifpp')
+               + (model === 'perdidas' ? get('up') : 0);
+  const diff   = Math.abs(por - conta);
+  let indicator = form.querySelector('.balance-indicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.className = 'balance-indicator';
+    indicator.style.marginTop = '8px';
+    input.closest('.flujo-grid').after(indicator);
+  }
+  if (por === 0 && conta === 0) {
+    indicator.innerHTML = '';
+  } else if (diff < 0.001) {
+    indicator.innerHTML = `<span class="balance-ok"><i class="ti ti-check"></i> Flujo equilibrado (${por.toLocaleString('es-PE')} uds)</span>`;
+  } else {
+    indicator.innerHTML = `<span class="balance-err"><i class="ti ti-alert-circle"></i> Desequilibrio: Por contabilizar=${por} ≠ Contabilizadas=${conta} (diff=${(por-conta).toFixed(3)})</span>`;
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('kardex.index') }}">Kardex</a> / {{ item.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ item.name }}</h1>
+    <p class="page-subtitle">{{ item.code }} · {{ item.category }}{% if item.unit_name %} · {{ item.unit_name }}{% endif %} · {{ item.valuation_method }}</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-secondary btn-sm" onclick="toggleEdit()">
+      <i class="ti ti-edit"></i> Editar ítem
+    </button>
+    <form method="POST" action="{{ url_for('kardex.delete_item', item_id=item.id) }}" style="display:inline">
+      <button type="submit" class="btn btn-ghost btn-sm" data-confirm="¿Desactivar este ítem?">
+        <i class="ti ti-trash"></i> Desactivar
+      </button>
+    </form>
+    <a href="{{ url_for('kardex.index') }}" class="btn btn-secondary btn-sm">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<!-- Alerta stock bajo mínimo -->
+{% if item.safety_stock and (item.current_stock or 0) < item.safety_stock %}
+<div class="alert alert-error" style="margin-bottom:20px">
+  <i class="ti ti-alert-circle"></i>
+  <strong>⚠ Stock bajo mínimo.</strong>
+  Stock actual: <strong>{{ item.current_stock or 0 }} {{ item.unit_code or 'uds' }}</strong> —
+  Mínimo: <strong>{{ item.safety_stock }} {{ item.unit_code or 'uds' }}</strong>.
+  Se envió alerta al correo registrado.
+</div>
+{% endif %}
+
+<!-- KPIs -->
+<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+  <div class="kpi-card">
+    <i class="ti ti-package kpi-icon"></i>
+    <div class="kpi-label">Stock actual</div>
+    <div class="kpi-value orange">{{ item.current_stock or 0 }}</div>
+    <div class="kpi-sub">{{ item.unit_code or 'uds' }}</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-coin kpi-icon"></i>
+    <div class="kpi-label">Costo promedio</div>
+    <div class="kpi-value">{{ (item.average_cost or 0) | currency }}</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-chart-bar kpi-icon"></i>
+    <div class="kpi-label">Valor total</div>
+    <div class="kpi-value">{{ ((item.current_stock or 0) * (item.average_cost or 0)) | currency }}</div>
+  </div>
+  <div class="kpi-card {{ 'danger' if item.safety_stock and (item.current_stock or 0) < item.safety_stock else 'success' if item.safety_stock else '' }}">
+    <i class="ti ti-shield kpi-icon"></i>
+    <div class="kpi-label">Stock mínimo</div>
+    <div class="kpi-value">{{ item.safety_stock or 0 }}</div>
+    <div class="kpi-sub">
+      {% if item.safety_stock and (item.current_stock or 0) < item.safety_stock %}
+        ⚠ Bajo mínimo
+      {% elif item.safety_stock %}
+        ✓ OK
+      {% else %}
+        Sin definir
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Panel editar ítem (oculto por defecto) -->
+<div id="edit-panel" style="display:none;margin-bottom:20px">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-edit" style="color:var(--primary)"></i> Editar datos del ítem</span>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('kardex.edit_item', item_id=item.id) }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+          <div class="form-group mb-0">
+            <label class="form-label">Código</label>
+            <input type="text" name="code" class="form-control" value="{{ item.code }}" required>
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">Nombre</label>
+            <input type="text" name="name" class="form-control" value="{{ item.name }}" required>
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">Categoría</label>
+            <select name="category" class="form-control">
+              {% for cat in ['insumo','producto','semielaborado','activo'] %}
+                <option value="{{ cat }}" {% if item.category == cat %}selected{% endif %}>{{ cat | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">Unidad</label>
+            <input type="text" name="unit_name" class="form-control"
+                   list="unit-list-edit" placeholder="Ej: kg, m, unidad, caja..."
+                   autocomplete="off"
+                   value="{{ (item.unit_name + ' (' + item.unit_code + ')') if item.unit_name else '' }}">
+            <datalist id="unit-list-edit">
+              {% for u in units %}
+                <option value="{{ u.name }} ({{ u.code }})">
+              {% endfor %}
+            </datalist>
+            <span class="form-hint">Escribe o elige de la lista</span>
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">
+              Stock mínimo
+              <span class="help-btn" data-help="Cuando el stock caiga por debajo de este valor, se enviará una alerta al correo de la empresa." data-help-title="Stock mínimo / seguridad">?</span>
+            </label>
+            <input type="number" name="safety_stock" class="form-control" step="0.001" min="0" value="{{ item.safety_stock or 0 }}">
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">Método valuación</label>
+            <select name="valuation_method" class="form-control">
+              <option value="promedio" {% if item.valuation_method == 'promedio' %}selected{% endif %}>Costo promedio</option>
+              <option value="peps" {% if item.valuation_method == 'peps' %}selected{% endif %}>PEPS</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-device-floppy"></i> Guardar cambios</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="toggleEdit()">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start">
+
+  <!-- Registrar movimiento -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-plus" style="color:var(--primary)"></i> Registrar movimiento</span>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select id="mov-type" class="form-control" onchange="toggleCost()">
+          <option value="entrada">Entrada</option>
+          <option value="salida">Salida</option>
+          <option value="devolucion">Devolución</option>
+          <option value="ajuste">Ajuste de stock</option>
+        </select>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Cantidad</label>
+          <input type="number" id="mov-qty" class="form-control" step="0.001" min="0" value="0">
+        </div>
+        <div class="form-group" id="cost-field">
+          <label class="form-label">Costo unitario (S/)</label>
+          <input type="number" id="mov-cost" class="form-control" step="0.0001" min="0" value="0">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input type="date" id="mov-date" class="form-control" value="{{ today }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Referencia</label>
+          <input type="text" id="mov-ref" class="form-control" placeholder="OC-001, Fact-123...">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Comentario</label>
+        <input type="text" id="mov-notes" class="form-control"
+               placeholder="Observaciones opcionales...">
+      </div>
+      <button class="btn btn-primary w-100" onclick="registrarMovimiento()">
+        <i class="ti ti-check"></i> Registrar
+      </button>
+      <div id="mov-result" style="margin-top:10px;font-size:13px"></div>
+    </div>
+  </div>
+
+  <!-- Historial -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-list" style="color:var(--primary)"></i> Historial</span>
+      <span class="badge badge-neutral">{{ movements|length }}</span>
+    </div>
+    {% if movements %}
+    <div class="table-wrap" style="max-height:400px;overflow-y:auto">
+      <table class="table" style="font-size:12.5px">
+        <thead>
+          <tr><th>Fecha</th><th>Tipo</th><th class="number">Cantidad</th><th class="number">Costo</th><th class="number">Stock</th><th>Ref.</th></tr>
+        </thead>
+        <tbody>
+          {% for m in movements %}
+          <tr>
+            <td>{{ m.movement_date }}</td>
+            <td><span class="badge {{ 'badge-success' if m.movement_type=='entrada' else 'badge-danger' if m.movement_type=='salida' else 'badge-warning' if m.movement_type=='ajuste' else 'badge-neutral' }}">{{ m.movement_type }}</span></td>
+            <td class="number" style="color:{{ 'var(--success)' if m.movement_type in ('entrada','devolucion') else 'var(--danger)' }}">
+              {{ '+' if m.movement_type in ('entrada','devolucion') else '' }}{{ m.quantity }}
+            </td>
+            <td class="number">{{ m.unit_cost | currency }}</td>
+            <td class="number"><strong>{{ m.stock_after }}</strong></td>
+            <td style="font-size:11px;color:var(--text-secondary)">{{ m.reference or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:30px"><i class="ti ti-list"></i><p>Sin movimientos aún.</p></div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ITEM_ID = {{ item.id }};
+const SAFETY  = {{ item.safety_stock or 0 }};
+
+function toggleEdit() {
+  const p = document.getElementById('edit-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleCost() {
+  const type  = document.getElementById('mov-type').value;
+  const field = document.getElementById('cost-field');
+  // Costo solo aplica a entradas y ajustes
+  field.style.opacity = (type === 'salida' || type === 'devolucion') ? '0.4' : '1';
+}
+
+async function registrarMovimiento() {
+  const type  = document.getElementById('mov-type').value;
+  const qty   = parseFloat(document.getElementById('mov-qty').value) || 0;
+  const cost  = parseFloat(document.getElementById('mov-cost').value) || 0;
+  const ddate = document.getElementById('mov-date').value;
+  const ref   = document.getElementById('mov-ref').value;
+  const res_d = document.getElementById('mov-result');
+
+  if (qty <= 0) { res_d.innerHTML = '<span style="color:var(--danger)">La cantidad debe ser mayor a 0.</span>'; return; }
+
+  res_d.innerHTML = '<span style="color:var(--text-secondary)">Registrando...</span>';
+
+  const res  = await fetch(`/kardex/item/${ITEM_ID}/movement`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ movement_type: type, quantity: qty, unit_cost: cost,
+                           movement_date: ddate, reference: ref,
+                           notes: document.getElementById('mov-notes').value })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    const alertMsg = data.bajo_minimo
+      ? ' <span style="color:var(--danger)">⚠ Stock bajo mínimo — se envió alerta al correo.</span>'
+      : '';
+    res_d.innerHTML = `<span style="color:var(--success)">✓ ${data.message}</span>${alertMsg}`;
+    if (window.showToast) showToast('Movimiento registrado', 'success');
+    setTimeout(() => location.reload(), 1200);
+  } else {
+    res_d.innerHTML = `<span style="color:var(--danger)">${data.error}</span>`;
+  }
+}
+
+// Fecha de hoy por defecto
+document.getElementById('mov-date').value = new Date().toISOString().slice(0,10);
+toggleCost();
+</script>
+{% endblock %}

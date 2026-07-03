@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block title %}ABC Paso 1 — Recursos{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('abc.index') }}">ABC</a> / {{ model.name }} / Paso 1{% endblock %}
+
+{% block extra_css %}
+<style>
+.step-nav { display:flex; gap:8px; margin-bottom:24px; }
+.step-item { flex:1; padding:10px 14px; border-radius:var(--radius-md); font-size:13px; font-weight:500; text-align:center; }
+.step-item.active { background:var(--primary); color:#fff; }
+.step-item.done   { background:var(--success-bg); color:var(--success-text); border:1px solid #bbf7d0; }
+.step-item.pending{ background:var(--bg-secondary); color:var(--text-secondary); border:1px solid var(--border); }
+.alloc-table input[type=number] { width:90px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:13px; text-align:right; }
+.alloc-table input[type=number]:focus { outline:none; border-color:var(--primary); }
+.pct-cell { font-size:11px; color:var(--text-secondary); }
+.amt-cell { font-size:13px; font-weight:600; color:var(--primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ model.name }}</h1>
+    <p class="page-subtitle">Paso 1 de 3 — Distribución de Recursos a Centros de Actividad</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-secondary btn-sm" id="btn-ai-assign"
+            onclick="asignarConIA()"
+            title="La IA asigna automáticamente los 3 pasos y calcula el modelo">
+      <i class="ti ti-wand"></i> Auto-asignar con IA (3 pasos)
+    </button>
+    <button class="btn btn-ghost btn-sm"
+            onclick="showHelpModal('Paso 1: Recursos → Centros',
+              'Ingresa la cantidad del inductor que le corresponde a cada centro. El sistema calculará automáticamente el porcentaje y el monto distribuido. Ejemplo: si el recurso Energía usa Kw-h como inductor, y el Centro de Producción consume 800 Kw-h de un total de 1000, le corresponde el 80% del costo de energía.')">
+      <i class="ti ti-help-circle"></i> Ayuda
+    </button>
+    <button class="btn btn-secondary btn-sm"
+            onclick="CostosChatbox.sendQuick('¿Qué inductores son adecuados para distribuir recursos energía, personal y depreciación a centros de actividad en manufactura?', 'abc')">
+      <i class="ti ti-robot"></i> Consultar IA
+    </button>
+  </div>
+</div>
+
+<!-- Navegación de pasos -->
+<div class="step-nav">
+  <div class="step-item active">1. Recursos → Centros</div>
+  <div class="step-item pending"><a href="{{ url_for('abc.step2_centers', mid=model.id) }}" style="color:inherit;text-decoration:none">2. Centros → Actividades</a></div>
+  <div class="step-item pending"><a href="{{ url_for('abc.step3_objects', mid=model.id) }}" style="color:inherit;text-decoration:none">3. Actividades → Objetos</a></div>
+  <div class="step-item pending">4. Resultados</div>
+</div>
+
+<!-- Resumen -->
+<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+  <div class="kpi-card"><div class="kpi-label">Recursos</div><div class="kpi-value orange">{{ resources|length }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">Centros</div><div class="kpi-value">{{ centers|length }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">Asignados</div><div class="kpi-value">{{ summary.resources_assigned }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">G. Admin</div><div class="kpi-value">{{ model.admin_expense }}%</div></div>
+</div>
+
+{% if not resources or not centers %}
+<div class="alert alert-warning">
+  <i class="ti ti-alert-triangle"></i>
+  {% if not resources %}Primero registra <a href="{{ url_for('resources.new') }}">Recursos</a>.{% endif %}
+  {% if not centers %}Primero crea <a href="{{ url_for('activity_centers.new') }}">Centros de Actividad</a>.{% endif %}
+</div>
+{% else %}
+
+<!-- Tabla de asignaciones guardadas -->
+{% if existing %}
+<div class="card mb-2" style="margin-bottom:20px">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-check" style="color:var(--success)"></i> Asignaciones guardadas</span>
+    <span class="badge badge-success">{{ existing|length }} registros</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table" style="font-size:13px">
+      <thead><tr><th>Recurso</th><th>Centro</th><th class="number">Cant. inductor</th><th class="number">%</th><th class="number">Monto asignado</th><th class="actions">Acciones</th></tr></thead>
+      <tbody>
+        {% for e in existing %}
+        <tr>
+          <td>{{ e.res_name }}</td>
+          <td>{{ e.center_name }}</td>
+          <td class="number">{{ e.driver_quantity }}</td>
+          <td class="pct-cell number">{{ e.driver_percentage | round(1) }}%</td>
+          <td class="amt-cell number">{{ e.allocated_amount | currency }}</td>
+          <td class="actions">
+            <form method="POST" action="{{ url_for('abc.delete_step1_allocation', mid=model.id, allocation_id=e.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar esta asignación?"><i class="ti ti-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Formulario de nueva asignación -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-plus" style="color:var(--primary)"></i> Agregar asignación</span>
+  </div>
+  <div class="card-body">
+    <div id="alloc-form" class="form-grid-3" style="align-items:flex-end;gap:12px">
+      <div class="form-group mb-0">
+        <label class="form-label">Recurso</label>
+        <select id="sel-resource" class="form-control">
+          {% for r in resources %}<option value="{{ r.id }}" data-monthly="{{ r.monthly_amount }}" data-driver="{{ r.driver_type }}">{{ r.name }} — {{ r.monthly_amount | currency }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group mb-0">
+        <label class="form-label">Centro de actividad</label>
+        <select id="sel-center" class="form-control">
+          {% for c in centers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group mb-0">
+        <label class="form-label">Cantidad del inductor (<span id="driver-label">uds</span>)</label>
+        <input type="number" id="inp-driver" class="form-control" step="0.01" min="0" value="0">
+      </div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="saveAlloc()">
+        <i class="ti ti-device-floppy"></i> Guardar asignación
+      </button>
+      <a href="{{ url_for('abc.step2_centers', mid=model.id) }}" class="btn btn-secondary">
+        Ir al Paso 2 <i class="ti ti-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const MODEL_ID = {{ model.id }};
+
+document.getElementById('sel-resource')?.addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  document.getElementById('driver-label').textContent = opt.dataset.driver || 'uds';
+});
+
+async function asignarConIA() {
+  if (!confirm('La IA asignará los 3 pasos (Recursos→Centros→Actividades→Objetos) y calculará el modelo. ¿Continuar?')) return;
+  const btn = document.getElementById('btn-ai-assign');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Asignando...';
+
+  const res  = await fetch(`/ai/abc-assign/${MODEL_ID}`, { method: 'POST' });
+  const data = await res.json();
+
+  if (data.success) {
+    showToast(data.message, 'success');
+    const res2 = await fetch(`/abc/${MODEL_ID}/calculate`, { method: 'POST' });
+    const d2   = await res2.json();
+    if (d2.success) {
+      showToast('¡Calculado! Redirigiendo...', 'success');
+      setTimeout(() => location.href = d2.redirect, 1200);
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-wand"></i> Auto-asignar con IA (3 pasos)';
+      location.reload();
+    }
+  } else {
+    showToast('Error: ' + data.error, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-wand"></i> Auto-asignar con IA (3 pasos)';
+  }
+}
+
+async function saveAlloc() {
+  const resource_id = document.getElementById('sel-resource').value;
+  const center_id   = document.getElementById('sel-center').value;
+  const driver_qty  = parseFloat(document.getElementById('inp-driver').value || 0);
+
+  if (!resource_id || !center_id) { showToast('Selecciona recurso y centro', 'warning'); return; }
+
+  const res = await fetch(`/abc/${MODEL_ID}/step1`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ allocations: [{ resource_id, center_id, driver_qty }] })
+  });
+  const data = await res.json();
+  if (data.success) {
+    showToast('Asignación guardada', 'success');
+    setTimeout(() => location.reload(), 600);
+  } else {
+    showToast('Error al guardar', 'error');
+  }
+}
+</script>
+{% endblock %}

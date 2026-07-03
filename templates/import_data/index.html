@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block title %}Importar desde Excel{% endblock %}
+{% block breadcrumb %}Importar Excel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Importar desde Excel</h1>
+    <p class="page-subtitle">Carga masiva de trabajadores, productos, recursos e inventario</p>
+  </div>
+</div>
+
+<div class="grid-2">
+  {% for entity, label, icon, cols in [
+    ('employees', 'Trabajadores / Personal', 'ti-users', 'codigo | nombre | sueldo_basico | tipo_mod | horas_disponibles'),
+    ('products',  'Productos y Servicios',   'ti-package', 'codigo | nombre | categoria | precio_venta | costo_estandar'),
+    ('resources', 'Recursos ABC',            'ti-database', 'codigo | nombre | categoria | monto_mensual'),
+    ('inventory', 'Inventario / Kardex',     'ti-box', 'codigo | nombre | categoria | stock_inicial | costo_unitario'),
+  ] %}
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti {{ icon }}" style="color:var(--primary)"></i> {{ label }}</span>
+    </div>
+    <div class="card-body">
+      <div style="margin-bottom:12px;padding:10px;background:var(--bg-secondary);border-radius:var(--radius-md);font-size:12px">
+        <strong>Columnas esperadas en la fila 1:</strong><br>
+        <code style="font-size:11px">{{ cols }}</code>
+      </div>
+      <input type="file" id="file-{{ entity }}" accept=".xlsx,.xls" style="display:none"
+             onchange="importExcel('{{ entity }}', this)">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('file-{{ entity }}').click()">
+          <i class="ti ti-upload"></i> Seleccionar Excel
+        </button>
+        <a href="/import/template/{{ entity }}" class="btn btn-ghost btn-sm">
+          <i class="ti ti-file-spreadsheet"></i> Descargar plantilla
+        </a>
+      </div>
+      <div id="status-{{ entity }}" style="margin-top:10px;font-size:12px"></div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card mt-2" style="margin-top:20px">
+  <div class="card-header"><span class="card-title"><i class="ti ti-copy" style="color:var(--primary)"></i> Duplicar registros</span></div>
+  <div class="card-body">
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+      Copia una estructura de costos o modelo ABC existente al período activo sin empezar desde cero.
+    </p>
+    <div class="grid-2">
+      <div>
+        <label class="form-label">Duplicar Estructura de Costos</label>
+        <div style="display:flex;gap:8px">
+          <select id="dup-struct" class="form-control">
+            <option value="">Seleccionar estructura...</option>
+            {% for s in structures %}
+              <option value="{{ s.id }}">{{ s.name }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="duplicateRecord('structure')">
+            <i class="ti ti-copy"></i> Duplicar
+          </button>
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Duplicar Modelo ABC</label>
+        <div style="display:flex;gap:8px">
+          <select id="dup-abc" class="form-control">
+            <option value="">Seleccionar modelo...</option>
+            {% for m in abc_models %}
+              <option value="{{ m.id }}">{{ m.name }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="duplicateRecord('abc')">
+            <i class="ti ti-copy"></i> Duplicar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function importExcel(entity, input) {
+  const file   = input.files[0];
+  const status = document.getElementById(`status-${entity}`);
+  if (!file) return;
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('entity', entity);
+
+  status.innerHTML = '<i class="ti ti-loader"></i> Importando...';
+
+  const res  = await fetch('/import/excel', { method: 'POST', body: fd });
+  const data = await res.json();
+
+  if (data.success) {
+    status.innerHTML = `<span style="color:var(--success)">✓ ${data.inserted} registros importados de ${data.total} filas</span>`;
+    if (data.errors?.length) {
+      status.innerHTML += `<br><span style="color:var(--warning)">${data.errors.length} errores: ${data.errors[0]}</span>`;
+    }
+    showToast(`${data.inserted} registros importados`, 'success');
+    setTimeout(() => location.reload(), 2000);
+  } else {
+    status.innerHTML = `<span style="color:var(--danger)">Error: ${data.error}</span>`;
+  }
+  input.value = '';
+}
+
+async function duplicateRecord(type) {
+  const sel = document.getElementById(`dup-${type}`);
+  const id  = sel.value;
+  if (!id) { showToast('Selecciona un registro', 'warning'); return; }
+
+  const res  = await fetch(`/duplicate/${type}/${id}`, { method: 'POST' });
+  const data = await res.json();
+
+  if (data.success) {
+    showToast('Duplicado correctamente', 'success');
+    setTimeout(() => location.href = data.redirect, 800);
+  } else {
+    showToast(data.error || 'Error al duplicar', 'error');
+  }
+}
+</script>
+{% endblock %}

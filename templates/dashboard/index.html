@@ -1,0 +1,336 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Resumen general de {{ current_company or 'tu empresa' }} · {{ current_period or '' }}</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            data-voice-help="El dashboard muestra los indicadores clave de tu empresa: ventas, costos, personal, inventario y calidad."
+            onclick="showHelpModal('¿Qué es el Dashboard?', 'El dashboard muestra los indicadores clave de tu empresa en tiempo real. Incluye KPIs de ventas, costos, personal, inventario y costos de calidad. Los gráficos se actualizan automáticamente con los datos registrados en cada módulo.')">
+      <i class="ti ti-help-circle"></i> Ayuda
+    </button>
+    <button class="btn btn-ghost btn-sm" id="btn-alerts" onclick="loadAlerts()">
+      <i class="ti ti-bell"></i> Alertas
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="CostosChatbox.sendQuick('Interpreta el dashboard actual', 'graficos')">
+      <i class="ti ti-robot"></i> Analizar con IA
+    </button>
+  </div>
+</div>
+
+<!-- Panel de alertas (oculto por defecto) -->
+<div id="alerts-panel" style="display:none;margin-bottom:20px">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-bell" style="color:var(--primary)"></i> Alertas del sistema</span>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('alerts-panel').style.display='none'">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+    <div class="card-body" id="alerts-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <i class="ti ti-trending-up kpi-icon"></i>
+    <div class="kpi-label">Ventas proyectadas</div>
+    <div class="kpi-value orange">{{ kpis.ventas_proyectadas | currency }}</div>
+    <div class="kpi-sub">Período actual</div>
+  </div>
+  <div class="kpi-card {{ 'success' if kpis.margen_bruto >= 20 else ('warning' if kpis.margen_bruto >= 10 else 'danger') }}">
+    <i class="ti ti-percentage kpi-icon"></i>
+    <div class="kpi-label">Margen bruto</div>
+    <div class="kpi-value">{{ kpis.margen_bruto }}%</div>
+    <div class="kpi-sub">{{ kpis.utilidad_proyectada | currency }}</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-users kpi-icon"></i>
+    <div class="kpi-label">Total personal</div>
+    <div class="kpi-value">{{ kpis.total_personal }}</div>
+    <div class="kpi-sub">{{ kpis.total_mod }} MOD activos</div>
+  </div>
+  <div class="kpi-card warning">
+    <i class="ti ti-coin kpi-icon"></i>
+    <div class="kpi-label">Costo personal/mes</div>
+    <div class="kpi-value">{{ kpis.costo_personal_mes | currency }}</div>
+    <div class="kpi-sub">Total planilla</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-box kpi-icon"></i>
+    <div class="kpi-label">Stock valorizado</div>
+    <div class="kpi-value orange">{{ kpis.stock_valorizado | currency }}</div>
+    <div class="kpi-sub">{{ kpis.items_inventario }} ítems</div>
+  </div>
+  <div class="kpi-card {{ 'danger' if kpis.pct_fallas > 30 else 'success' }}">
+    <i class="ti ti-shield-check kpi-icon"></i>
+    <div class="kpi-label">Costo de calidad</div>
+    <div class="kpi-value">{{ kpis.costo_calidad | currency }}</div>
+    <div class="kpi-sub">{{ kpis.pct_fallas }}% en fallas</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-chart-treemap kpi-icon"></i>
+    <div class="kpi-label">Estructuras de costo</div>
+    <div class="kpi-value">{{ kpis.total_estructuras }}</div>
+    <div class="kpi-sub">Registradas</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-calculator kpi-icon"></i>
+    <div class="kpi-label">Modelos ABC</div>
+    <div class="kpi-value">{{ kpis.total_abc_modelos }}</div>
+    <div class="kpi-sub">Período actual</div>
+  </div>
+</div>
+
+<!-- Gráficos -->
+<div class="grid-2" style="margin-bottom:24px">
+
+  <!-- Personal por tipo -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-users" style="color:var(--primary)"></i> Personal por tipo</span>
+      <button class="btn btn-ghost btn-sm chart-interpret-btn"
+              onclick="interpretChart('personal_tipo')">
+        <i class="ti ti-robot"></i> Analizar
+      </button>
+    </div>
+    <div class="card-body chart-wrap">
+      {% if charts.personal_labels %}
+        <canvas id="chart-personal" height="200"></canvas>
+      {% else %}
+        <div class="empty-state" style="padding:32px">
+          <i class="ti ti-users"></i>
+          <p>Sin datos de personal. <a href="{{ url_for('personal.new') }}">Registra trabajadores</a></p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Inventario top 5 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-box" style="color:var(--primary)"></i> Inventario valorizado</span>
+      <button class="btn btn-ghost btn-sm chart-interpret-btn"
+              onclick="interpretChart('inventario')">
+        <i class="ti ti-robot"></i> Analizar
+      </button>
+    </div>
+    <div class="card-body chart-wrap">
+      {% if charts.inv_labels %}
+        <canvas id="chart-inv" height="200"></canvas>
+      {% else %}
+        <div class="empty-state" style="padding:32px">
+          <i class="ti ti-box"></i>
+          <p>Sin inventario. <a href="{{ url_for('kardex.index') }}">Registra ítems</a></p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Costos de calidad + Acciones rápidas -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-shield-check" style="color:var(--primary)"></i> Costos de calidad</span>
+    </div>
+    <div class="card-body chart-wrap">
+      {% if charts.quality_labels %}
+        <canvas id="chart-quality" height="200"></canvas>
+      {% else %}
+        <div class="empty-state" style="padding:32px">
+          <i class="ti ti-shield-check"></i>
+          <p>Sin costos de calidad registrados.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Acciones rápidas -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-bolt" style="color:var(--primary)"></i> Acciones rápidas</span>
+    </div>
+    <div class="card-body">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <a href="{{ url_for('personal.new') }}" class="btn btn-secondary w-100" style="justify-content:flex-start">
+          <i class="ti ti-user-plus"></i> Registrar trabajador
+        </a>
+        <a href="{{ url_for('products.new') }}" class="btn btn-secondary w-100" style="justify-content:flex-start">
+          <i class="ti ti-package"></i> Agregar producto/servicio
+        </a>
+        <a href="{{ url_for('kardex.new_item') }}" class="btn btn-secondary w-100" style="justify-content:flex-start">
+          <i class="ti ti-box"></i> Nuevo ítem de inventario
+        </a>
+        <a href="{{ url_for('structures.new') }}" class="btn btn-secondary w-100" style="justify-content:flex-start">
+          <i class="ti ti-chart-treemap"></i> Nueva estructura de costos
+        </a>
+        <button class="btn btn-primary w-100" style="justify-content:flex-start"
+                onclick="CostosChatbox.sendQuick('¿Cómo empiezo a usar Costos Pro?', 'manual')">
+          <i class="ti ti-robot"></i> Guía de inicio rápido (IA)
+        </button>
+      </div>
+
+      {% if not current_company %}
+      <div class="alert alert-warning mt-2">
+        <i class="ti ti-alert-triangle"></i>
+        No tienes empresa activa.
+        <a href="{{ url_for('companies.new') }}">Crear empresa</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PALETTE = {
+  orange:  '#F97316',
+  amber:   '#FACC15',
+  teal:    '#14B8A6',
+  blue:    '#3B82F6',
+  green:   '#22C55E',
+  red:     '#DC2626',
+  purple:  '#8B5CF6',
+  muted:   '#E5D5C5',
+};
+
+{% if charts.personal_labels %}
+new Chart(document.getElementById('chart-personal'), {
+  type: 'doughnut',
+  data: {
+    labels: {{ charts.personal_labels | tojson }},
+    datasets: [{
+      data: {{ charts.personal_costos | tojson }},
+      backgroundColor: [PALETTE.orange, PALETTE.teal, PALETTE.blue, PALETTE.green],
+      borderWidth: 2,
+      borderColor: '#fff',
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 14 } },
+      tooltip: { callbacks: {
+        label: ctx => ` ${ctx.label}: S/ ${ctx.parsed.toLocaleString('es-PE', {minimumFractionDigits:2})}`
+      }}
+    }
+  }
+});
+{% endif %}
+
+{% if charts.inv_labels %}
+new Chart(document.getElementById('chart-inv'), {
+  type: 'bar',
+  data: {
+    labels: {{ charts.inv_labels | tojson }},
+    datasets: [{
+      label: 'Valor S/',
+      data: {{ charts.inv_valores | tojson }},
+      backgroundColor: PALETTE.orange + 'CC',
+      borderColor: PALETTE.orange,
+      borderWidth: 1,
+      borderRadius: 5,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { ticks: { callback: v => 'S/ ' + v.toLocaleString('es-PE') }, grid: { color: '#F4ECE4' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+{% endif %}
+
+{% if charts.quality_labels %}
+new Chart(document.getElementById('chart-quality'), {
+  type: 'doughnut',
+  data: {
+    labels: {{ charts.quality_labels | tojson }},
+    datasets: [{
+      data: {{ charts.quality_valores | tojson }},
+      backgroundColor: [PALETTE.green, PALETTE.blue, PALETTE.amber, PALETTE.red],
+      borderWidth: 2,
+      borderColor: '#fff',
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } },
+    }
+  }
+});
+{% endif %}
+
+// Interpretar gráficos con IA
+function interpretChart(chartId) {
+  const chartData = {
+    personal_tipo: {
+      labels: {{ charts.personal_labels | tojson }},
+      data:   {{ charts.personal_costos | tojson }},
+    },
+    inventario: {
+      labels: {{ charts.inv_labels | tojson }},
+      data:   {{ charts.inv_valores | tojson }},
+    },
+  }[chartId] || {};
+
+  fetch('/ai/interpret-chart', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chart_data: chartData, chart_type: 'barras', module: 'dashboard' })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) CostosChatbox.open() || CostosChatbox.sendQuick(`Analiza: ${d.response}`, 'graficos');
+    else showToast('Error al interpretar gráfico', 'error');
+  });
+}
+
+// Voz al cargar dashboard
+setTimeout(() => {
+  window.CostosProVoice?.sayModule('dashboard');
+}, 1000);
+
+async function loadAlerts() {
+  const panel = document.getElementById('alerts-panel');
+  const list  = document.getElementById('alerts-list');
+  panel.style.display = 'block';
+  list.innerHTML = '<div style="color:var(--text-secondary);font-size:13px">Analizando...</div>';
+
+  const res  = await fetch('/dashboard/alerts');
+  const data = await res.json();
+
+  if (data.success) {
+    list.innerHTML = data.alerts.map(a => `
+      <div class="alert alert-${a.type}" style="margin-bottom:0">
+        <i class="ti ${a.icon}"></i>
+        <div>
+          <strong>${a.title}</strong><br>
+          <span style="font-size:12px">${a.msg}</span>
+        </div>
+        ${a.module ? `<a href="/${a.module.replace('_','-')}" class="btn btn-ghost btn-sm" style="margin-left:auto;white-space:nowrap">Ver →</a>` : ''}
+      </div>
+    `).join('');
+    if (window.CostosProVoice?.isEnabled()) {
+      window.CostosProVoice.speak(`${data.count} alertas detectadas en el sistema.`);
+    }
+  }
+}
+</script>
+{% endblock %}

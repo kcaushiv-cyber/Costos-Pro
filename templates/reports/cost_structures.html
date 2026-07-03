@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Estructuras de Costos{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('reports.index') }}">Reportes</a> / Estructuras{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Reporte: Estructuras de Costos</h1><p class="page-subtitle">{{ current_company }} · {{ current_period }}</p></div>
+  <div class="page-actions">
+    <a href="{{ url_for('reports.export_excel', report_type='cost-structures') }}" class="btn btn-secondary btn-sm"><i class="ti ti-file-spreadsheet"></i> Excel</a>
+    <a href="{{ url_for('reports.index') }}" class="btn btn-ghost btn-sm"><i class="ti ti-arrow-left"></i></a>
+  </div>
+</div>
+{% if data.structures %}
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Nombre</th><th>Producto</th><th>Origen</th><th class="number">MP</th><th class="number">MOD</th><th class="number">CIF</th><th class="number">G.Admin</th><th class="number">G.Ventas</th><th class="number">Total</th><th class="number">P.Venta</th><th class="number">Margen</th></tr>
+      </thead>
+      <tbody>
+        {% for s in data.structures %}
+        <tr>
+          <td style="font-weight:500">{{ s.name }}</td>
+          <td>{{ s.product or '—' }}</td>
+          <td><span class="badge badge-neutral">{{ s.origin }}</span></td>
+          <td class="number">{{ s.mp | currency }}</td>
+          <td class="number">{{ s.mod | currency }}</td>
+          <td class="number">{{ s.cif | currency }}</td>
+          <td class="number">{{ s.gasto_admin | currency }}</td>
+          <td class="number">{{ s.gasto_ventas | currency }}</td>
+          <td class="number"><strong>{{ s.total | currency }}</strong></td>
+          <td class="number">{{ s.sale_price | currency }}</td>
+          <td class="number" style="color:{{ 'var(--success)' if s.margin >= 0 else 'var(--danger)' }};font-weight:600">{{ s.margin | currency }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card"><div class="empty-state"><i class="ti ti-chart-treemap"></i><h3>Sin estructuras de costos</h3><p><a href="{{ url_for('structures.new') }}">Crea una estructura</a> primero.</p></div></div>
+{% endif %}
+{% endblock %}

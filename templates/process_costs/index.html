@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Costos por Proceso{% endblock %}
+{% block breadcrumb %}Costos por Proceso{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Costos por Proceso</h1>
+    <p class="page-subtitle">4 modelos: Normal · Unidades Agregadas · Unidades Perdidas · PROTECHO</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            onclick="showHelpModal('Costos por Proceso',
+              'El sistema de costos por proceso se usa en industrias con producción continua (textil, alimentos, químicos). Los costos se acumulan por departamento y se transfieren al siguiente. Se calculan Unidades Equivalentes (UE) para distribuir costos entre productos terminados y en proceso.')">
+      <i class="ti ti-help-circle"></i> Ayuda
+    </button>
+    <button class="btn btn-secondary btn-sm"
+            onclick="CostosChatbox.sendQuick('Explícame los 4 modelos de costos por proceso y cuándo usar cada uno', 'proceso')">
+      <i class="ti ti-robot"></i> Consultar IA
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('process_dept')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+        <a href="{{ url_for('process_costs.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Nuevo modelo
+    </a>
+  </div>
+</div>
+
+<!-- Explicación modelos -->
+<div class="grid-2" style="margin-bottom:20px">
+  {% for v, label, desc in model_types %}
+  <div class="card" style="border-left:3px solid var(--primary)">
+    <div class="card-body" style="padding:14px 16px">
+      <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:4px">{{ label }}</div>
+      <div style="font-size:12px;color:var(--text-secondary)">{{ desc }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if models %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-git-branch" style="color:var(--primary)"></i> Modelos del período</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Nombre</th><th>Producto</th><th>Tipo</th><th class="number">Departamentos</th><th>Estado</th><th class="actions">Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for m in models %}
+        <tr>
+          <td style="font-weight:500">{{ m.name }}</td>
+          <td>{{ m.product_name or '—' }}</td>
+          <td><span class="badge badge-primary">{{ m.model_type }}</span></td>
+          <td class="number">{{ m.dept_count }}</td>
+          <td><span class="badge {{ 'badge-success' if m.status=='calculado' else 'badge-neutral' }}">{{ m.status }}</span></td>
+          <td class="actions">
+            <a href="{{ url_for('process_costs.edit', mid=m.id) }}" class="btn btn-secondary btn-sm">
+              <i class="ti ti-edit"></i> Editar
+            </a>
+            {% if m.status == 'calculado' %}
+            <a href="{{ url_for('process_costs.results', mid=m.id) }}" class="btn btn-primary btn-sm">
+              <i class="ti ti-chart-bar"></i> Resultados
+            </a>
+            {% endif %}
+            <form method="POST" action="{{ url_for('process_costs.delete', mid=m.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar este modelo?">
+                <i class="ti ti-trash"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    <i class="ti ti-git-branch"></i>
+    <h3>Sin modelos de proceso</h3>
+    <p>Crea tu primer modelo para calcular costos por departamento.</p>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('process_dept')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+        <a href="{{ url_for('process_costs.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Crear modelo
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

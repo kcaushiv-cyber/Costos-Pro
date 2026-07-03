@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Unidades de Medida{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('products.index') }}">Productos</a> / Unidades{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Unidades de Medida</h1>
+    <p class="page-subtitle">Gestiona las unidades usadas en productos, inventario y costos</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('products.index') }}" class="btn btn-secondary">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-plus" style="color:var(--primary)"></i> Nueva unidad</span>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('products.units') }}">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Código <span class="required">*</span></label>
+            <input type="text" name="code" class="form-control" required
+                   placeholder="KG" maxlength="10">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Categoría</label>
+            <select name="category" class="form-control">
+              {% for v in ['unidad','peso','volumen','longitud','tiempo','otro'] %}
+                <option value="{{ v }}">{{ v|title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombre <span class="required">*</span></label>
+          <input type="text" name="name" class="form-control" required placeholder="Kilogramo">
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="ti ti-plus"></i> Agregar
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-rulers" style="color:var(--primary)"></i> Unidades registradas</span>
+      <span class="badge badge-neutral">{{ units|length }}</span>
+    </div>
+    {% if units %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Código</th><th>Nombre</th><th>Categoría</th></tr></thead>
+        <tbody>
+          {% for u in units %}
+          <tr>
+            <td><span class="badge badge-primary">{{ u.code }}</span></td>
+            <td>{{ u.name }}</td>
+            <td style="color:var(--text-secondary)">{{ u.category or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="ti ti-rulers"></i><p>Sin unidades registradas.</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

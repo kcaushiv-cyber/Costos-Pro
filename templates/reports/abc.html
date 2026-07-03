@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block title %}Reporte ABC{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('reports.index') }}">Reportes</a> / Costeo ABC{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Reporte: Costeo ABC</h1>
+    <p class="page-subtitle">Comparativa ABC vs Tradicional · {{ current_company }} · {{ current_period }}</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            onclick="CostosChatbox.sendQuick('Analiza las diferencias entre costo ABC y tradicional. ¿Qué productos están sobrecosteados o subcosteados con el método tradicional?', 'abc')">
+      <i class="ti ti-robot"></i> Analizar con IA
+    </button>
+    <a href="{{ url_for('reports.export_excel', report_type='abc') }}" class="btn btn-secondary btn-sm">
+      <i class="ti ti-file-spreadsheet"></i> Excel
+    </a>
+    <a href="{{ url_for('reports.index') }}" class="btn btn-ghost btn-sm"><i class="ti ti-arrow-left"></i></a>
+  </div>
+</div>
+
+{% if data.results %}
+
+<!-- Gráfico comparativo -->
+<div class="card mb-2" style="margin-bottom:20px">
+  <div class="card-header"><span class="card-title"><i class="ti ti-chart-bar" style="color:var(--primary)"></i> CU ABC vs Tradicional</span></div>
+  <div class="card-body"><canvas id="chart-abc" height="180"></canvas></div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-table" style="color:var(--primary)"></i> Resultados por objeto de costo</span>
+    <span class="badge badge-neutral">{{ data.results|length }} objetos</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Modelo</th><th>Código</th><th>Objeto de Costo</th>
+          <th class="number">Qty/mes</th>
+          <th class="number">C. Prod.</th>
+          <th class="number">C. Total</th>
+          <th class="number">P. Venta</th>
+          <th class="number">CU ABC</th>
+          <th class="number">CU Trad.</th>
+          <th class="number">Diferencia</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in data.results %}
+        <tr>
+          <td style="font-size:12px;color:var(--text-secondary)">{{ r.model }}</td>
+          <td><span class="badge badge-neutral">{{ r.obj_code }}</span></td>
+          <td style="font-weight:500">{{ r.obj_name }}</td>
+          <td class="number">{{ r.qty }}</td>
+          <td class="number">{{ r.prod_cost | currency }}</td>
+          <td class="number"><strong>{{ r.total_cost | currency }}</strong></td>
+          <td class="number">{{ r.sale_price | currency }}</td>
+          <td class="number" style="font-weight:600;color:var(--primary)">{{ r.unit_cost_abc }}</td>
+          <td class="number">{{ r.unit_cost_trad if r.unit_cost_trad else '—' }}</td>
+          <td class="number">
+            {% if r.unit_cost_trad %}
+              <span style="color:{{ 'var(--danger)' if r.diff > 0 else 'var(--success)' }};font-weight:600">
+                {{ '+' if r.diff > 0 else '' }}{{ r.diff }}
+                ({{ '+' if r.diff_pct > 0 else '' }}{{ r.diff_pct }}%)
+              </span>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card mt-2" style="margin-top:16px">
+  <div class="card-body" style="font-size:12px;color:var(--text-secondary)">
+    <strong>Interpretación:</strong>
+    Diferencia positiva (+) = el costo ABC es mayor que el tradicional → el producto estaba
+    <strong>subcosteado</strong> (se le asignaban menos costos indirectos de los que realmente consume).<br>
+    Diferencia negativa (−) = costo ABC menor → estaba <strong>sobrecosteado</strong>.
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <i class="ti ti-calculator"></i>
+    <h3>Sin resultados ABC para este período</h3>
+    <p>Calcula al menos un modelo ABC primero.</p>
+    <a href="{{ url_for('abc.index') }}" class="btn btn-primary"><i class="ti ti-calculator"></i> Ir a ABC</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if data.results %}
+<script>
+new Chart(document.getElementById('chart-abc'), {
+  type: 'bar',
+  data: {
+    labels: {{ data.results | map(attribute='obj_name') | list | tojson }},
+    datasets: [
+      {
+        label: 'CU ABC',
+        data: {{ data.results | map(attribute='unit_cost_abc') | list | tojson }},
+        backgroundColor: '#F97316CC', borderColor: '#F97316', borderWidth: 1, borderRadius: 4,
+      },
+      {
+        label: 'CU Tradicional',
+        data: {{ data.results | map(attribute='unit_cost_trad') | list | tojson }},
+        backgroundColor: '#3B82F6CC', borderColor: '#3B82F6', borderWidth: 1, borderRadius: 4,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: { y: { ticks: { callback: v => 'S/ ' + v.toFixed(2) } } }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

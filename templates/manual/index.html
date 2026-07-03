@@ -1,0 +1,817 @@
+{% extends 'base.html' %}
+{% block title %}Manual de Usuario{% endblock %}
+{% block breadcrumb %}Manual{% endblock %}
+
+{% block extra_css %}
+<style>
+.manual-tab { padding:8px 16px; border-radius:var(--radius-md); font-size:13px; font-weight:500; cursor:pointer; background:var(--bg-secondary); border:1px solid var(--border); color:var(--text-secondary); text-decoration:none; white-space:nowrap; }
+.manual-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+.manual-section { display:none; }
+.manual-section.active { display:block; }
+.step-num { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; background:var(--primary); color:#fff; border-radius:50%; font-size:11px; font-weight:700; flex-shrink:0; }
+.ai-badge { display:inline-flex; align-items:center; gap:4px; background:var(--primary-xlight); color:var(--primary); border-radius:12px; padding:2px 8px; font-size:11px; font-weight:600; }
+.card-ai { border-left:3px solid #8B5CF6; }
+.card-mod { border-left:3px solid var(--primary); }
+.code-box { background:#1F2937; color:#F9FAFB; border-radius:8px; padding:12px 14px; font-family:monospace; font-size:12px; line-height:1.7; margin:8px 0; white-space:pre-wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Manual de Usuario</h1>
+    <p class="page-subtitle">Guía completa — todos los módulos + funciones IA de Costos Pro v5</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-primary" onclick="CostosChatbox.sendQuick('Soy nuevo en Costos Pro. Guíame paso a paso para empezar.', 'manual')">
+      <i class="ti ti-robot"></i> Guía rápida con IA
+    </button>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px;padding-bottom:4px">
+  {% for tid, label in [
+    ('inicio','🚀 Inicio rápido'),('empresa','🏢 Empresa'),
+    ('personal','👥 Personal'),('kardex','📦 Kardex'),
+    ('abc','🧮 ABC'),('proceso','⚙️ Proceso'),
+    ('presupuestos','💰 Presupuestos'),('calidad','🛡️ Calidad'),
+    ('reportes','📊 Reportes'),('ia','🤖 Funciones IA'),
+    ('importar','📥 Importar Excel'),
+  ] %}
+  <a class="manual-tab {% if loop.first %}active{% endif %}"
+     href="#{{ tid }}" onclick="showTab('{{ tid }}')">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<!-- ══════════ INICIO RÁPIDO ══════════ -->
+<div id="inicio" class="manual-section active">
+<div class="grid-2" style="align-items:start">
+  <div class="card card-mod">
+    <div class="card-header"><span class="card-title">Flujo recomendado para empezar</span></div>
+    <div class="card-body">
+      {% for n,t,d in [
+        (1,'Crear empresa','Sidebar → Empresa → Nueva empresa. Ingresa razón social, RUC y sector. El sector determina los ejemplos y sugerencias IA.'),
+        (2,'Crear período contable','Empresa → Configurar → crea un período (Ej: Enero 2025). Sin período activo los datos no se guardan correctamente.'),
+        (3,'Registrar personal','Personal/MOD → Nuevo. El sistema calcula toda la planilla peruana automáticamente desde el sueldo básico.'),
+        (4,'Agregar productos','Productos/Servicios → registra lo que produces. Se usan en ABC y Estructura de Costos.'),
+        (5,'Inventario inicial','Kardex → Generar con IA o cargar manualmente tus insumos con stock y costo inicial.'),
+        (6,'Sistema ABC','Registra Recursos → Centros → Actividades → Objetos → crea el modelo ABC y sigue el wizard de 3 pasos.'),
+        (7,'Reportes','Reportes → Resumen Ejecutivo o Punto de Equilibrio para analizar la rentabilidad.'),
+      ] %}
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
+        <div class="step-num">{{ n }}</div>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">{{ t }}</div>
+        <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">{{ d }}</div></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card card-ai" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title"><span class="ai-badge"><i class="ti ti-robot"></i> IA</span> 3 formas de usar la IA</span></div>
+      <div class="card-body">
+        {% for icon,t,d in [
+          ('ti-message-circle','Chatbox flotante','Botón naranja inferior derecho. Elige el agente según tu necesidad: General, ABC, Proceso, Presupuesto, Calidad o Manual.'),
+          ('ti-wand','Botón "Generar con IA"','Disponible en Recursos, Centros, Actividades, Objetos, Kardex y Calidad. Da un contexto, la IA genera los registros con códigos y los inserta a la BD.'),
+          ('ti-chart-bar','Analizar con IA','En Reportes, Dashboard y resultados, el botón genera una narrativa gerencial con riesgos y recomendaciones.'),
+        ] %}
+        <div style="display:flex;gap:10px;align-items:flex-start;padding:10px;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:8px">
+          <i class="ti {{ icon }}" style="font-size:18px;color:#8B5CF6;flex-shrink:0;margin-top:1px"></i>
+          <div><div style="font-size:13px;font-weight:600">{{ t }}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">{{ d }}</div></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card"><div class="card-body">
+      <button class="btn btn-primary w-100" onclick="CostosChatbox.sendQuick('Guíame para configurar Costos Pro para una empresa del sector manufactura', 'manual')">
+        <i class="ti ti-rocket"></i> Guía personalizada con IA
+      </button>
+    </div></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ EMPRESA ══════════ -->
+<div id="empresa" class="manual-section">
+<div class="grid-2" style="align-items:start">
+  <div class="card card-mod">
+    <div class="card-header"><span class="card-title"><i class="ti ti-building" style="color:var(--primary)"></i> Empresa y Períodos</span></div>
+    <div class="card-body" style="font-size:13px;line-height:1.7">
+      <strong>Independencia de empresas:</strong> Cada empresa tiene sus propios datos (personal, costos, ABC, presupuestos). Puedes tener varias empresas con un mismo usuario y cambiar entre ellas desde el sidebar.<br><br>
+      <strong>Períodos contables:</strong> Definen el rango de fechas para tus costos. Sin período activo los módulos de ABC, calidad y presupuestos no asocian los datos.
+      <div class="code-box">Empresa → Configurar → Períodos
+→ Crear: nombre (Ej: "Enero 2025"), tipo, fecha inicio/fin
+→ Clic "Activar" en el período deseado
+→ La sesión se actualiza y todos los módulos apuntan a ese período</div>
+      <strong>¿Puedo comparar períodos?</strong><br>
+      Sí — ve a <strong>Comparar Períodos</strong> en el sidebar. Selecciona dos períodos y el sistema muestra la variación % de ventas, costos, utilidad, calidad y más.
+    </div>
+  </div>
+  <div class="card card-ai">
+    <div class="card-header"><span class="card-title"><span class="ai-badge"><i class="ti ti-robot"></i> IA</span> Consultas frecuentes</span></div>
+    <div class="card-body">
+      {% for q in ['¿Cómo estructuro los períodos para una empresa manufacturera?','¿Qué sector debo elegir para mi empresa?','¿Cuántos períodos puedo tener activos?'] %}
+      <button class="btn btn-ghost btn-sm w-100" style="text-align:left;justify-content:flex-start;margin-bottom:6px"
+              onclick="CostosChatbox.sendQuick('{{ q }}', 'manual')">
+        <i class="ti ti-message-circle"></i> {{ q }}
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ PERSONAL ══════════ -->
+<div id="personal" class="manual-section">
+<div class="grid-2" style="align-items:start">
+  <div class="card card-mod">
+    <div class="card-header"><span class="card-title"><i class="ti ti-users" style="color:var(--primary)"></i> Personal y Mano de Obra</span></div>
+    <div class="card-body" style="font-size:13px;line-height:1.7">
+      <strong>Tipos de mano de obra:</strong>
+      <ul style="margin:6px 0 10px 16px">
+        <li><strong>MOD</strong> — Directa: trabaja en producción → va al costo del producto</li>
+        <li><strong>MOI</strong> — Indirecta: supervisores, mantenimiento → va a CIF</li>
+        <li><strong>Admin</strong> — Personal administrativo → gastos del período</li>
+        <li><strong>Ventas</strong> — Fuerza de ventas → gastos de ventas</li>
+      </ul>
+      <strong>Cálculo automático de planilla peruana:</strong>
+      <div class="code-box">Gratificación  = Sueldo básico ÷ 6           (16.67%)
+CTS            = (Sueldo + Gratif.) × 7 ÷ 72   (8.33%)
+Essalud        = Sueldo × 9%
+SCTR (si aplica) = Sueldo × 0.65%
+─────────────────────────────────────────────
+Costo total/mes = suma de todos los aportes
+Costo/hora      = Costo total ÷ Horas disponibles/mes</div>
+      <strong>El sistema calcula en tiempo real</strong> mientras escribes el sueldo básico en el formulario.<br><br>
+      <strong>Asignar a actividades ABC:</strong> en el detalle del trabajador puedes indicar qué % de su tiempo dedica a cada actividad. El costo se distribuye automáticamente.
+    </div>
+  </div>
+  <div class="card card-ai">
+    <div class="card-header"><span class="card-title"><span class="ai-badge"><i class="ti ti-robot"></i> IA</span> Cómo usar la IA en Personal</span></div>
+    <div class="card-body" style="font-size:13px;line-height:1.7">
+      El chatbox en módulo Personal puede:
+      <ul style="margin:6px 0 10px 16px">
+        <li>Calcular el costo total de un trabajador con cualquier sueldo</li>
+        <li>Explicar cuándo aplica SCTR y Vida Ley</li>
+        <li>Comparar el costo MOD vs MOI para tu sector</li>
+      </ul>
+      <div class="code-box">Ejemplo de consulta al chatbox:
+"¿Cuánto me cuesta un operario de costura
+ con S/ 1,500 de sueldo incluyendo todos
+ los beneficios sociales en Perú?"</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+        {% for q in ['¿Cuánto cuesta un trabajador con S/ 2,000 de sueldo?','¿Cuándo aplica el SCTR en manufactura?','¿Cómo afecta la planilla al punto de equilibrio?'] %}
+        <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start"
+                onclick="CostosChatbox.sendQuick('{{ q }}', 'general')">
+          <i class="ti ti-message-circle"></i> {{ q }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ KARDEX ══════════ -->
+<div id="kardex" class="manual-section">
+<div class="grid-2" style="align-items:start">
+  <div class="card card-mod">
+    <div class="card-header"><span class="card-title"><i class="ti ti-box" style="color:var(--primary)"></i> Inventario / Kardex</span></div>
+    <div class="card-body" style="font-size:13px;line-height:1.7">
+      <strong>Tipos de movimiento:</strong>
+      <ul style="margin:6px 0 10px 16px">
+        <li><strong>Entrada</strong> — compra o producción. Recalcula el costo promedio.</li>
+        <li><strong>Salida</strong> — consumo o venta. Usa el costo promedio actual.</li>
+        <li><strong>Devolución</strong> — regresa stock, mantiene el costo promedio.</li>
+        <li><strong>Ajuste</strong> — corrige el stock a un valor exacto (inventario físico).</li>
+      </ul>
+      <strong>Costo promedio ponderado:</strong>
+      <div class="code-box">Nuevo costo prom. =
+  (Stock actual × Costo prom. + Qty entrada × Costo entrada)
+  ÷ (Stock actual + Qty entrada)</div>
+      <strong>Stock mínimo:</strong> cuando el stock baja del mínimo configurado, aparece una alerta ⚠ en la lista y en Dashboard → Alertas.
+    </div>
+  </div>
+  <div class="card card-ai">
+    <div class="card-header"><span class="card-title"><span class="ai-badge"><i class="ti ti-robot"></i> IA</span> Generar inventario con IA</span></div>
+    <div class="card-body" style="font-size:13px">
+      <strong>Paso a paso:</strong>
+      <div class="code-box">1. Kardex → clic "Generar con IA"
+2. Describe tus insumos:
+   Ej: "Empresa textil que usa tela de algodón,
+       hilo, botones, etiquetas y bolsas"
+3. La IA genera ítems con:
+   • Código automático: INS001, INS002...
+   • Nombre descriptivo
+   • Categoría (insumo/producto/semielaborado)
+   • Stock inicial referencial
+   • Costo unitario referencial en soles
+4. Revisa la tabla de preview
+5. Clic "Insertar todos a la BD"
+   → Se crean los ítems + movimiento de saldo inicial</div>
+      <button class="btn btn-secondary btn-sm w-100 mt-1" onclick="AIGenerator.show('kardex')">
+        <i class="ti ti-wand"></i> Probar Generar con IA
+      </button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ ABC ══════════ -->
+<div id="abc" class="manual-section">
+<div class="grid-2" style="align-items:start">
+  <div class="card card-mod">
+    <div class="card-header"><span class="card-title"><i class="ti ti-calculator" style="color:var(--primary)"></i> Sistema ABC — Costeo Basado en Actividades</span></div>
+    <div class="card-body" style="font-size:13px;line-height:1.7">
+      <strong>Flujo del ABC (4 niveles):</strong>
+      <div class="code-box">RECURSOS → CENTROS DE ACTIVIDAD → ACTIVIDADES → OBJETOS DE COSTO
+
+Ejemplo real:
+Energía eléctrica (S/1,200/mes)
+ → Centro de Producción (80%)
+   → Actividad: Corte de tela (60% del centro)
+     → Objeto: Camisa talla M (distribuido por metros cortados)</div>
+      <strong>Los 4 niveles:</strong>
+      <ul style="margin:6px 0 10px 16px">
+        <li><strong>Recursos</strong> — todos los costos indirectos: energía, alquiler, depreciación, seguros</li>
+        <li><strong>Centros de Actividad</strong> — áreas: Producción, Administración, Ventas, Almacén</li>
+        <li><strong>Actividades</strong> — tareas: Corte, Costura, Inspección, Empaque. Cada una tiene un inductor</li>
+        <li><strong>Objetos de Costo</strong> — productos o servicios finales que recibirán el costo</li>
+      </ul>
+      <strong>Inductores:</strong> la base de distribución. Ej: horas máquina, metros cortados, unidades producidas, kWh, pedidos.<br><br>
+      <strong>Wizard de 3 pasos:</strong> al crear el modelo ABC, asignas inductores en 3 etapas: Recursos→Centros, Centros→Actividades, Actividades→Objetos.<br><br>
+      <strong>Imagen del modelo:</strong> al crear un modelo ABC puedes subir una foto del producto para que se muestre en la ficha.
+    </div>
+  </div>
+  <div class="card card-ai">
+    <div class="card-header"><span class="card-title"><span class="ai-badge"><i class="ti ti-robot"></i> IA</span> Generar los 4 niveles con IA</span></div>
+    <div class="card-body" style="font-size:13px">
+      Cada módulo del ABC tiene su botón "Generar con IA":
+      <div class="code-box">── RECURSOS ──────────────────────────────
+1. Recursos → "Generar con IA"
+   Describe: "fábrica textil 500m², 5 máquinas,
+   consumo ~2,000 Kw-h/mes, 1 piso alquilado"
+   → Genera: REC001 Energía S/1,200 (kwh)
+             REC002 Alquiler S/3,000 (m2)
+             REC003 Depreciación S/800...
+
+── CENTROS ───────────────────────────────
+2. Centros → "Generar con IA"
+   → Genera: CA001 Producción (operativo)
+             CA002 Administración (apoyo)...
+
+── ACTIVIDADES ──────────────────────────
+3. Actividades → "Generar con IA"
+   → Genera actividades asignadas a sus
+     centros con inductores apropiados
+     ACT001 Corte → CA001 → horas_maquina
+
+── OBJETOS DE COSTO ─────────────────────
+4. Objetos → "Generar con IA"
+   → Genera vinculados a tus productos
+     OC001 Camisa M → qty 500 uds/mes</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+        {% for q,agent in [('¿Cómo elijo el inductor correcto para mi actividad?','abc'),('¿Por qué el ABC da costo diferente al método tradicional?','abc'),('Explícame el flujo de distribución ABC paso a paso','abc')] %}
+        <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start"
+                onclick="CostosChatbox.sendQuick('{{ q }}', '{{ agent }}')">
+          <i class="ti ti-message-circle"></i> {{ q }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ PROCESO ══════════ -->
+<div id="proceso" class="manual-section">
+<div class="grid-2" style="align-items:start">
+  <div class="card card-mod">
+    <div class="card-header"><span class="card-title"><i class="ti ti-git-branch" style="color:var(--primary)"></i> Costos por Proceso — 4 Modelos</span></div>
+    <div class="card-body" style="font-size:13px;line-height:1.7">
+      <strong>¿Cuándo usar cada modelo?</strong>
+      <table class="table" style="margin:8px 0;font-size:12px">
+        <thead><tr><th>Modelo</th><th>Cuándo usarlo</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Normal</strong></td><td>Producción estándar sin variantes</td></tr>
+          <tr><td><strong>Agregadas</strong></td><td>Se añaden materiales durante el proceso (UAg)</td></tr>
+          <tr><td><strong>Perdidas</strong></td><td>Hay merma o desperdicio normal (UP)</td></tr>
+          <tr><td><strong>PROTECHO</strong></td><td>Productos terminados que no se transfieren al cierre (UTNT)</td></tr>
+        </tbody>
+      </table>
+      <strong>Notación estándar:</strong>
+      <div class="code-box">UIIPP = Unidades iniciales en proceso al inicio
+UPROD = Unidades producidas/recibidas en el período
+UTT   = Unidades terminadas y transferidas
+UIFPP = Unidades finales en proceso al cierre
+UP    = Unidades perdidas (merma)
+UTNT  = Terminadas no transferidas (PROTECHO)
+
+Regla: UIIPP + UPROD = UTT + UIFPP [+ UP + UTNT]
+
+UE (mat)  = UTT + UIFPP×%mat_uifpp − UIIPP×%mat_uiipp
+UE (conv) = UTT + UIFPP×%conv_uifpp − UIIPP×%conv_uiipp
+CU_total  = (Costos mat + Costos conv) ÷ UE correspondientes</div>
+      El sistema <strong>verifica automáticamente</strong> el equilibrio del flujo físico y muestra ⚠ si hay desequilibrio mientras ingresas los datos.
+    </div>
+  </div>
+  <div class="card card-ai">
+    <div class="card-header"><span class="card-title"><span class="ai-badge"><i class="ti ti-robot"></i> IA</span> Cómo usar la IA en Proceso</span></div>
+    <div class="card-body" style="font-size:13px">
+      <div class="code-box">Ejemplo de consulta al chatbox:
+"Tengo 100 UIIPP al 60% conversión,
+ ingresen 900 UPROD, salen 950 UTT,
+ quedan 50 UIFPP al 40% conversión.
+ ¿Cómo calculo las UE y el CU?"</div>
+      En la página de resultados del modelo proceso, el botón <strong>"Analizar con IA"</strong> explica:
+      <ul style="margin:6px 0 10px 16px">
+        <li>Si el flujo físico está equilibrado</li>
+        <li>Qué significa el CU calculado</li>
+        <li>Cómo interpretar la asignación de costos a UTT, UIFPP y UP</li>
+      </ul>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        {% for q in ['¿Qué es el grado de avance en costos por proceso?','¿Cuándo hay unidades perdidas normales vs anormales?','Explícame el modelo PROTECHO'] %}
+        <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start"
+                onclick="CostosChatbox.sendQuick('{{ q }}', 'proceso')">
+          <i class="ti ti-message-circle"></i> {{ q }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ PRESUPUESTOS ══════════ -->
+<div id="presupuestos" class="manual-section">
+<div class="grid-2" style="align-items:start">
+  <div class="card card-mod">
+    <div class="card-header"><span class="card-title"><i class="ti ti-coin" style="color:var(--primary)"></i> Presupuestos Operativos</span></div>
+    <div class="card-body" style="font-size:13px;line-height:1.7">
+      <strong>6 subsecciones integradas:</strong>
+      <ol style="margin:6px 0 12px 16px">
+        <li><strong>Ventas</strong> — qty × precio por producto y mes</li>
+        <li><strong>Producción</strong> — Ventas + Inv.Final − Inv.Inicial</li>
+        <li><strong>MOD</strong> — horas requeridas × costo/hora</li>
+        <li><strong>CIF</strong> — costos fijos y variables por mes</li>
+        <li><strong>Deuda</strong> — tabla de amortización automática</li>
+        <li><strong>Flujo de Caja</strong> — generado automáticamente</li>
+      </ol>
+      <strong>Tabla de amortización (método francés):</strong>
+      <div class="code-box">Cuota = Préstamo × [r(1+r)^n / ((1+r)^n − 1)]
+donde: r = TEA/12, n = meses
+
+Ejemplo: S/ 50,000 al 12% TEA / 12 meses
+→ r = 1%, cuota mensual = S/ 4,440.43
+→ Mes 1: interés S/500 + capital S/3,940.43</div>
+    </div>
+  </div>
+  <div class="card card-ai">
+    <div class="card-header"><span class="card-title"><span class="ai-badge"><i class="ti ti-robot"></i> IA</span> Cómo usar la IA en Presupuestos</span></div>
+    <div class="card-body" style="font-size:13px">
+      <div class="code-box">Consultas útiles al chatbox (agente Presupuesto):
+
+"¿Cómo interpreto el flujo de caja negativo
+ en marzo para mi empresa textil?"
+
+"¿Qué porcentaje de crecimiento de ventas
+ es razonable proyectar para manufactura?"
+
+"¿Cómo calculo la cuota de mi préstamo
+ de S/ 80,000 al 15% TEA en 24 meses?"</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+        {% for q in ['¿Cómo estructuro un presupuesto de ventas mensual?','¿Qué incluye el CIF fijo vs variable?','¿Cómo interpreto el punto de equilibrio con mi presupuesto?'] %}
+        <button class="btn btn-ghost btn-sm" style="text-align:left;justify-content:flex-start"
+                onclick="CostosChatbox.sendQuick('{{ q }}', 'presupuestos')">
+          <i class="ti ti-message-circle"></i> {{ q }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ CALIDAD ══════════ -->
+<div id="calidad" class="manual-section">
+<div class="grid-2" style="align-items:start">
+  <div class="card card-mod">
+    <div class="card-header"><span class="card-title"><i class="ti ti-shield-check" style="color:var(--primary)"></i> Costos de Calidad PAF</span></div>
+    <div class="card-body" style="font-size:13px;line-height:1.7">
+      <strong>Las 4 categorías PAF:</strong>
+      <table class="table" style="margin:8px 0;font-size:12px">
+        <thead><tr><th>Categoría</th><th>Qué incluye</th><th>Meta</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--success)"><strong>Prevención</strong></td><td>Capacitación, diseño de calidad, mantenimiento preventivo</td><td>↑ Aumentar</td></tr>
+          <tr><td style="color:#3B82F6"><strong>Evaluación</strong></td><td>Inspecciones, auditorías, pruebas de laboratorio</td><td>→ Mantener</td></tr>
+          <tr><td style="color:var(--warning)"><strong>Falla Interna</strong></td><td>Reprocesos, desperdicios, retrabajos detectados antes de entregar</td><td>↓ Reducir</td></tr>
+          <tr><td style="color:var(--danger)"><strong>Falla Externa</strong></td><td>Garantías, devoluciones, penalidades del cliente</td><td>↓ Eliminar</td></tr>
+        </tbody>
+      </table>
+      <strong>Indicador clave:</strong> % de fallas sobre el total de costos de calidad. Meta: <strong>menos del 20%</strong>.<br><br>
+      Si el % de fallas supera el 40%, el Dashboard lanza una <strong>alerta automática</strong>.
+    </div>
+  </div>
+  <div class="card card-ai">
+    <div class="card-header"><span class="card-title"><span class="ai-badge"><i class="ti ti-robot"></i> IA</span> 2 funciones IA en Calidad</span></div>
+    <div class="card-body" style="font-size:13px">
+      <strong>1. Clasificador PAF en tiempo real:</strong>
+      <div class="code-box">Panel derecho de Costos de Calidad
+→ Escribe: "Revisión final antes de despacho"
+→ IA responde:
+   Categoría: Evaluación
+   Razón: inspección antes de entregar al cliente
+   % ventas típico: 0.5%−1.5%
+   Recomendación: Mantener — no sobreinvertir aquí</div>
+      <strong>2. Generar actividades PAF con IA:</strong>
+      <div class="code-box">Costos de Calidad → "Generar con IA"
+→ Describe: "empresa textil con 20 máquinas,
+   clientes exigentes, problemas de costuras"
+→ Genera 8−12 actividades balanceadas:
+   • 3−4 de Prevención con costos referenciales
+   • 2−3 de Evaluación
+   • 2 de Falla Interna
+   • 1 de Falla Externa
+   → Clic "Insertar todos a la BD"</div>
+      <button class="btn btn-secondary btn-sm w-100 mt-1" onclick="AIGenerator.show('quality')">
+        <i class="ti ti-wand"></i> Generar actividades PAF con IA
+      </button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ REPORTES ══════════ -->
+<div id="reportes" class="manual-section">
+<div class="grid-2" style="align-items:start">
+  <div class="card card-mod">
+    <div class="card-header"><span class="card-title"><i class="ti ti-file-analytics" style="color:var(--primary)"></i> Reportes y Análisis</span></div>
+    <div class="card-body" style="font-size:13px;line-height:1.7">
+      <strong>6 reportes + 3 módulos de análisis:</strong>
+      <table class="table" style="margin:8px 0;font-size:12px">
+        <thead><tr><th>Módulo</th><th>Qué muestra</th><th>Exportar</th></tr></thead>
+        <tbody>
+          <tr><td>Ejecutivo</td><td>KPIs consolidados de toda la BD</td><td>Excel · PDF</td></tr>
+          <tr><td>Estructuras de Costos</td><td>MP+MOD+CIF+margen por producto</td><td>Excel</td></tr>
+          <tr><td>Costeo ABC</td><td>ABC vs Tradicional por objeto</td><td>Excel · PDF</td></tr>
+          <tr><td>Personal y MOD</td><td>Planilla y distribución por tipo</td><td>Excel</td></tr>
+          <tr><td>Inventario</td><td>Stock valorizado y alertas</td><td>Excel</td></tr>
+          <tr><td>Calidad PAF</td><td>Distribución y % sobre ventas</td><td>Excel</td></tr>
+          <tr><td>Punto de Equilibrio</td><td>PE en unidades y soles desde la BD</td><td>—</td></tr>
+          <tr><td>Comparar Períodos</td><td>Variación % entre dos períodos</td><td>—</td></tr>
+          <tr><td>Historial</td><td>Quién modificó qué y cuándo</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card card-ai">
+    <div class="card-header"><span class="card-title"><span class="ai-badge"><i class="ti ti-robot"></i> IA</span> Análisis y narrativas gerenciales</span></div>
+    <div class="card-body" style="font-size:13px">
+      <strong>Dashboard → "Alertas":</strong> la IA revisa en tiempo real:
+      <ul style="margin:4px 0 10px 16px;font-size:12px">
+        <li>Ítems con stock bajo el mínimo configurado</li>
+        <li>% de fallas en calidad mayor al 40%</li>
+        <li>Períodos o presupuestos sin configurar</li>
+        <li>Módulos ABC sin recursos registrados</li>
+      </ul>
+      <strong>Reportes → "Generar reporte IA":</strong>
+      <div class="code-box">La IA analiza todos los KPIs y genera:
+• Diagnóstico de rentabilidad actual
+• 2−3 riesgos financieros identificados
+• 3 recomendaciones concretas de acción
+
+Ejemplo de salida:
+"La empresa muestra un margen bruto del 23%,
+ por encima del sector. Sin embargo, el 51%
+ de los costos de calidad son fallas externas,
+ lo que sugiere un problema de inspección
+ final. Recomendación: aumentar prevención
+ del 8% al 15% del presupuesto de calidad."</div>
+      <strong>Punto de Equilibrio → "Analizar con IA":</strong><br>
+      Explica si la empresa está en zona segura, el margen de seguridad y cómo mejorar el MCV.
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ FUNCIONES IA ══════════ -->
+<div id="ia" class="manual-section">
+
+<!-- Intro -->
+<div class="card card-ai" style="margin-bottom:16px">
+  <div class="card-header">
+    <span class="card-title"><span class="ai-badge"><i class="ti ti-robot"></i> IA</span> Cómo usar la Generación con IA — Guía completa</span>
+  </div>
+  <div class="card-body" style="font-size:13px;line-height:1.7">
+    <p>Costos Pro tiene <strong>2 tipos de IA</strong>: el <strong>Chatbox</strong> (asistente conversacional) y el <strong>Generador</strong> (inserta datos directamente a la BD). Esta sección cubre ambos.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div style="padding:12px;background:var(--bg-secondary);border-radius:var(--radius-md);border-left:3px solid var(--primary)">
+        <div style="font-weight:600;margin-bottom:4px"><i class="ti ti-message-circle" style="color:var(--primary)"></i> Chatbox (esquina inferior derecha)</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Responde preguntas, explica conceptos, analiza tus datos, genera reportes en lenguaje natural. No inserta datos a la BD.</div>
+      </div>
+      <div style="padding:12px;background:var(--bg-secondary);border-radius:var(--radius-md);border-left:3px solid #8B5CF6">
+        <div style="font-weight:600;margin-bottom:4px"><i class="ti ti-wand" style="color:#8B5CF6"></i> Generar con IA (botón en cada módulo)</div>
+        <div style="font-size:12px;color:var(--text-secondary)">Genera registros completos con códigos, montos referenciales y los inserta directamente a la base de datos con un clic.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Flujo general del generador -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header"><span class="card-title"><i class="ti ti-route" style="color:var(--primary)"></i> Flujo del Generador IA — mismo en todos los módulos</span></div>
+  <div class="card-body">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      {% for n, label in [(1,'Clic en "Generar con IA""'),(2,'Describe tu empresa'),(3,'IA genera preview'),(4,'Revisas los datos'),(5,'"Insertar todos a la BD"'),(6,'Recarga automática')] %}
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="width:24px;height:24px;background:var(--primary);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">{{ n }}</div>
+        <div style="font-size:12px;font-weight:500">{{ label }}</div>
+        {% if not loop.last %}<div style="color:var(--text-light)">→</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <div style="background:#1F2937;color:#F9FAFB;border-radius:8px;padding:12px 14px;font-family:monospace;font-size:12px;line-height:1.8">
+Contexto ideal: "Empresa textil de confecciones en Lima, 15 operarios,<br>
+producimos camisas y pantalones, consumo ~2000 Kwh/mes,<br>
+3 pisos: planta baja (corte), 2do piso (costura), 3er piso (acabado)"<br>
+<br>
+→ La IA genera códigos como REC001, CA001, ACT001<br>
+→ Montos referenciales en soles peruanos<br>
+→ Inductores correctos para tu sector
+    </div>
+  </div>
+</div>
+
+<!-- Por módulo -->
+<div class="grid-2">
+
+  <!-- Recursos -->
+  <div class="card card-ai">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-database" style="color:var(--primary)"></i> Recursos — Nivel 1 ABC</span>
+      <button class="btn btn-ghost btn-sm" onclick="AIGenerator.show('resources')"><i class="ti ti-player-play"></i> Probar</button>
+    </div>
+    <div class="card-body" style="font-size:13px">
+      <p style="color:var(--text-secondary);margin-bottom:10px">Costos indirectos mensuales: energía, personal indirecto, depreciación, alquiler, seguros.</p>
+      <div class="code-box" style="font-size:11.5px">Genera: REC001 Energía eléctrica  S/ 1,500/mes
+        REC002 Alquiler planta        S/ 3,000/mes
+        REC003 Depreciación maquinaria S/ 800/mes
+        REC004 Mantenimiento          S/ 400/mes
+        ...con categoría e inductor asignados</div>
+      <div style="margin-top:10px;padding:8px;background:var(--primary-xlight);border-radius:6px;font-size:12px">
+        <strong>💡 Tip:</strong> Menciona cuántas máquinas tienes, los m² de la planta y consumos estimados para montos más precisos.
+      </div>
+      <button class="btn btn-secondary btn-sm w-100 mt-1" style="margin-top:8px"
+              onclick="CostosChatbox.sendQuick('¿Qué recursos ABC son típicos para una empresa del sector {{ current_sector }}?', 'abc')">
+        <i class="ti ti-robot"></i> Consultar al chatbox
+      </button>
+    </div>
+  </div>
+
+  <!-- Centros -->
+  <div class="card card-ai">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-layout-grid" style="color:#3B82F6"></i> Centros de Actividad — Nivel 2 ABC</span>
+      <button class="btn btn-ghost btn-sm" onclick="AIGenerator.show('activity_centers')"><i class="ti ti-player-play"></i> Probar</button>
+    </div>
+    <div class="card-body" style="font-size:13px">
+      <p style="color:var(--text-secondary);margin-bottom:10px">Agrupaciones de actividades: producción, administración, calidad, logística.</p>
+      <div class="code-box" style="font-size:11.5px">Genera: CA001 Centro de Producción Principal  (operativo)
+        CA002 Centro de Calidad e Inspección    (apoyo)
+        CA003 Centro Administrativo             (estrategico)
+        CA004 Centro de Logística               (apoyo)</div>
+      <div style="margin-top:10px;padding:8px;background:#EFF6FF;border-radius:6px;font-size:12px">
+        <strong>📌 Importante:</strong> Genera los centros ANTES de las actividades — las actividades necesitan un centro al que pertenecer.
+      </div>
+    </div>
+  </div>
+
+  <!-- Actividades -->
+  <div class="card card-ai">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-activity" style="color:#22C55E"></i> Actividades — Nivel 3 ABC</span>
+      <button class="btn btn-ghost btn-sm" onclick="AIGenerator.show('activities')"><i class="ti ti-player-play"></i> Probar</button>
+    </div>
+    <div class="card-body" style="font-size:13px">
+      <p style="color:var(--text-secondary);margin-bottom:10px">La IA usa los centros ya registrados y asigna cada actividad automáticamente.</p>
+      <div class="code-box" style="font-size:11.5px">Genera: ACT001 Corte de materia prima → CA001 (horas_maquina: 480)
+        ACT002 Costura a máquina     → CA001 (horas_maquina: 960)
+        ACT003 Control de calidad    → CA002 (inspecciones: 200)
+        ACT004 Empaque y despacho    → CA004 (unidades_prod: 500)</div>
+      <div style="margin-top:10px;padding:8px;background:#F0FDF4;border-radius:6px;font-size:12px">
+        <strong>⚠️ Prerequisito:</strong> Primero genera Recursos y Centros, luego Actividades.
+      </div>
+    </div>
+  </div>
+
+  <!-- Objetos -->
+  <div class="card card-ai">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-target" style="color:#8B5CF6"></i> Objetos de Costo — Nivel 4 ABC</span>
+      <button class="btn btn-ghost btn-sm" onclick="AIGenerator.show('cost_objects')"><i class="ti ti-player-play"></i> Probar</button>
+    </div>
+    <div class="card-body" style="font-size:13px">
+      <p style="color:var(--text-secondary);margin-bottom:10px">Tus productos finales o servicios. La IA los vincula a los productos ya registrados.</p>
+      <div class="code-box" style="font-size:11.5px">Genera: OC001 Camisa algodón talla M  → 500 uds/mes
+        OC002 Camisa algodón talla L  → 300 uds/mes
+        OC003 Pantalón drill talla 32 → 200 uds/mes</div>
+      <div style="margin-top:10px;padding:8px;background:#FAF5FF;border-radius:6px;font-size:12px">
+        <strong>💡 Tip:</strong> Menciona tus productos, tallas y volumen de producción mensual para cantidades más realistas.
+      </div>
+    </div>
+  </div>
+
+  <!-- Kardex -->
+  <div class="card card-ai">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-box" style="color:#14B8A6"></i> Inventario / Kardex</span>
+      <button class="btn btn-ghost btn-sm" onclick="AIGenerator.show('kardex')"><i class="ti ti-player-play"></i> Probar</button>
+    </div>
+    <div class="card-body" style="font-size:13px">
+      <p style="color:var(--text-secondary);margin-bottom:10px">Genera ítems de inventario con stock inicial y crea automáticamente el movimiento de entrada.</p>
+      <div class="code-box" style="font-size:11.5px">Genera: INS001 Tela algodón blanca  500 m  @ S/ 8.50
+        INS002 Hilo 40/2 negro       200 cones @ S/ 3.20
+        INS003 Botones nacarados    5000 uds @ S/ 0.15
+        INS004 Etiquetas marca      2000 uds @ S/ 0.08
+        → Crea kardex de entrada automáticamente</div>
+    </div>
+  </div>
+
+  <!-- Calidad -->
+  <div class="card card-ai">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-shield-check" style="color:#DC2626"></i> Costos de Calidad PAF</span>
+      <button class="btn btn-ghost btn-sm" onclick="AIGenerator.show('quality')"><i class="ti ti-player-play"></i> Probar</button>
+    </div>
+    <div class="card-body" style="font-size:13px">
+      <p style="color:var(--text-secondary);margin-bottom:10px">Genera actividades balanceadas entre Prevención, Evaluación y Fallas (meta: fallas &lt; 20%).</p>
+      <div class="code-box" style="font-size:11.5px">Genera: Prevención:   Capacitación calidad      S/ 500/mes
+                    Mantenimiento preventivo  S/ 300/mes
+        Evaluación:  Inspección final          S/ 400/mes
+                    Auditoría interna         S/ 200/mes
+        Falla Int.:  Reprocesos               S/ 150/mes
+        Falla Ext.:  Garantías y devoluciones S/ 100/mes</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Chatbox y agentes -->
+<div class="card card-ai" style="margin-top:16px">
+  <div class="card-header"><span class="card-title"><i class="ti ti-message-circle" style="color:var(--primary)"></i> Chatbox — 10 Agentes especializados</span></div>
+  <div class="card-body">
+    <p style="font-size:13px;margin-bottom:12px">Cada agente está entrenado en un área específica. Selecciónalo con los tabs en la parte superior del chat.</p>
+    <div class="grid-2">
+      {% for agent, icon, desc, ejemplo in [
+        ('General',       'ti-sparkles',      'Preguntas generales, fórmulas, conceptos', '"¿Qué es el costo de conversión?"'),
+        ('ABC',           'ti-calculator',    'Inductores, distribución, interpretación', '"¿Por qué el CU ABC difiere del tradicional?"'),
+        ('Proceso',       'ti-git-branch',    'Flujo físico, UE, CU, los 4 modelos',     '"Verifica mi flujo: UIIPP=100, UPROD=900, UTT=950, UIFPP=50"'),
+        ('Presupuesto',   'ti-coin',          'EGP, flujo de caja, amortización',         '"¿Mi flujo de caja de enero está bien?"'),
+        ('Calidad',       'ti-shield-check',  'Clasificación PAF, interpretación',        '"¿Esta actividad es prevención o evaluación?"'),
+        ('Estructura',    'ti-chart-treemap', 'Genera propuestas de estructura de costos', '"Propón una estructura para una camisa talla M"'),
+        ('Clasificador',  'ti-tag',           'Clasifica cualquier costo',               '"¿El seguro de la planta es CIF fijo o gasto?"'),
+        ('Gráficos',      'ti-chart-bar',     'Interpreta dashboards y gráficos',        '"¿Qué me dice este gráfico de torta PAF?"'),
+        ('Reportes',      'ti-file-analytics','Narrativas gerenciales, análisis',        '"Genera un informe ejecutivo para el directorio"'),
+        ('Manual',        'ti-book',          'Guía paso a paso del sistema',            '"¿Cómo configuro el modelo ABC paso a paso?"'),
+      ] %}
+      <div style="display:flex;gap:10px;padding:10px;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:8px">
+        <div style="width:32px;height:32px;background:var(--primary-xlight);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="ti {{ icon }}" style="color:var(--primary);font-size:16px"></i>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700;color:var(--primary)">{{ agent }}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:1px">{{ desc }}</div>
+          <div style="font-size:11px;color:var(--text-light);font-style:italic;margin-top:2px">Ej: {{ ejemplo }}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="align-self:flex-start"
+                onclick="CostosChatbox.setAgent('{{ agent | lower }}'); CostosChatbox.open()">
+          <i class="ti ti-arrow-right"></i>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div style="margin-top:12px;padding:12px;background:var(--primary-xlight);border-radius:var(--radius-md);font-size:12px">
+      <strong><i class="ti ti-bulb" style="color:var(--primary)"></i> Markdown en el chatbox:</strong>
+      El chatbox renderiza tablas, ecuaciones, código y listas automáticamente.
+      Puedes pedir: <em>"muéstramelo como tabla"</em> o <em>"escribe la fórmula"</em> y se verá formateado.
+    </div>
+  </div>
+</div>
+
+<!-- Módulos con IA en módulos de costo -->
+<div class="card" style="margin-top:16px">
+  <div class="card-header"><span class="card-title"><i class="ti ti-robot" style="color:var(--primary)"></i> IA en módulos de Costo</span></div>
+  <div class="card-body">
+    <div class="grid-2">
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px"><i class="ti ti-git-branch" style="color:var(--primary)"></i> Costos por Proceso</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">El chatbox (agente Proceso) puede verificar tu flujo físico y calcular UE.</div>
+        <div class="code-box" style="font-size:11px">Pregunta al chat:
+"Tengo UIIPP=200 (mat 80%, conv 60%),
+UPROD=1800, UTT=1900, UIFPP=100 (mat 100%, conv 40%).
+Calcula las UE de materiales y conversión."</div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px"><i class="ti ti-coin" style="color:var(--primary)"></i> Presupuestos</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">El chatbox ayuda a interpretar el flujo de caja y recomendar ajustes.</div>
+        <div class="code-box" style="font-size:11px">Pregunta al chat:
+"Mi flujo de caja de marzo es negativo
+en S/ 2,500. ¿Qué opciones tengo para
+cubrir ese déficit?"</div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px"><i class="ti ti-scale" style="color:var(--primary)"></i> Punto de Equilibrio</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">Clic en "Analizar con IA" para interpretar el PE en contexto de tu empresa.</div>
+        <div class="code-box" style="font-size:11px">La IA responde:
+"Rosita SAC necesita vender 340 camisas/mes
+para cubrir costos. Con producción actual
+de 500, tienes 32% de margen de seguridad.
+Recomendación: reducir CIF fijo en..."</div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px"><i class="ti ti-chart-treemap" style="color:var(--primary)"></i> Estructura de Costos</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">Consulta al chatbox con el agente Estructura para propuestas completas.</div>
+        <div class="code-box" style="font-size:11px">Pregunta:
+"Propón una estructura de costos para
+una camisa de algodón talla M, con
+MOD de S/ 8.50, tela 1.5m a S/ 9/m"</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- ══════════ IMPORTAR EXCEL ══════════ -->
+<div id="importar" class="manual-section">
+<div class="grid-2" style="align-items:start">
+  <div class="card card-mod">
+    <div class="card-header"><span class="card-title"><i class="ti ti-upload" style="color:var(--primary)"></i> Importar desde Excel</span></div>
+    <div class="card-body" style="font-size:13px;line-height:1.7">
+      <strong>4 tipos de importación:</strong>
+      <table class="table" style="margin:8px 0;font-size:12px">
+        <thead><tr><th>Tipo</th><th>Columnas requeridas en fila 1</th></tr></thead>
+        <tbody>
+          <tr><td>Trabajadores</td><td>codigo · nombre · sueldo_basico · tipo_mod · horas_disponibles</td></tr>
+          <tr><td>Productos</td><td>codigo · nombre · categoria · precio_venta · costo_estandar</td></tr>
+          <tr><td>Recursos ABC</td><td>codigo · nombre · categoria · monto_mensual</td></tr>
+          <tr><td>Inventario</td><td>codigo · nombre · categoria · stock_inicial · costo_unitario</td></tr>
+        </tbody>
+      </table>
+      <strong>Paso a paso:</strong>
+      <div class="code-box">1. Importar Excel → Descargar plantilla del tipo
+2. Llena los datos en Excel
+3. Sube el archivo
+4. El sistema importa y muestra errores por fila
+5. Datos disponibles inmediatamente en el módulo</div>
+      <strong>Duplicar registros:</strong> en la misma página puedes copiar una Estructura de Costos o Modelo ABC al período activo sin empezar desde cero.
+    </div>
+  </div>
+  <div class="card card-ai">
+    <div class="card-header"><span class="card-title"><span class="ai-badge"><i class="ti ti-robot"></i> IA</span> ¿IA o Excel? ¿Cuándo usar cada uno?</span></div>
+    <div class="card-body" style="font-size:13px">
+      <table class="table" style="font-size:12px">
+        <thead><tr><th>Situación</th><th>Recomendación</th></tr></thead>
+        <tbody>
+          <tr><td>Empresa nueva, sin datos</td><td><strong>Generar con IA</strong> — base de partida rápida con datos referenciales</td></tr>
+          <tr><td>Tengo datos en Excel</td><td><strong>Importar Excel</strong> — carga tus datos reales directamente</td></tr>
+          <tr><td>Nuevo período, datos similares</td><td><strong>Duplicar</strong> el modelo anterior y ajustar montos</td></tr>
+          <tr><td>No sé qué recursos registrar</td><td><strong>IA primero</strong> para sugerencias, luego ajusta los montos reales</td></tr>
+          <tr><td>Muchos trabajadores</td><td><strong>Importar Excel</strong> — más rápido para listas largas</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px">
+        <button class="btn btn-ghost btn-sm w-100"
+                onclick="CostosChatbox.sendQuick('¿Cuándo conviene usar la generación IA vs importar desde Excel?', 'manual')">
+          <i class="ti ti-robot"></i> Consultar al asistente
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showTab(id) {
+  document.querySelectorAll('.manual-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.manual-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+  document.querySelectorAll('.manual-tab').forEach(b => {
+    if (b.getAttribute('href') === '#' + id) b.classList.add('active');
+  });
+  history.replaceState(null, '', '#' + id);
+}
+window.addEventListener('load', () => {
+  const hash = location.hash.slice(1);
+  if (hash && document.getElementById(hash)) showTab(hash);
+});
+setTimeout(() => window.CostosProVoice?.sayModule?.('manual'), 800);
+</script>
+{% endblock %}

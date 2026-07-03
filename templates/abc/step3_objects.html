@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}ABC Paso 3 — Objetos{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('abc.index') }}">ABC</a> / {{ model.name }} / Paso 3{% endblock %}
+
+{% block extra_css %}
+<style>
+.step-nav{display:flex;gap:8px;margin-bottom:24px}
+.step-item{flex:1;padding:10px 14px;border-radius:var(--radius-md);font-size:13px;font-weight:500;text-align:center}
+.step-item.active{background:var(--primary);color:#fff}
+.step-item.done{background:var(--success-bg);color:var(--success-text);border:1px solid #bbf7d0}
+.step-item.pending{background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border)}
+.amt-cell{font-size:13px;font-weight:600;color:var(--primary)}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">{{ model.name }}</h1><p class="page-subtitle">Paso 3 de 3 — Distribución de Actividades a Objetos de Costo</p></div>
+</div>
+
+<div class="step-nav">
+  <div class="step-item done"><a href="{{ url_for('abc.step1_resources', mid=model.id) }}" style="color:inherit;text-decoration:none">✓ Recursos → Centros</a></div>
+  <div class="step-item done"><a href="{{ url_for('abc.step2_centers', mid=model.id) }}" style="color:inherit;text-decoration:none">✓ Centros → Actividades</a></div>
+  <div class="step-item active">3. Actividades → Objetos</div>
+  <div class="step-item pending">4. Resultados</div>
+</div>
+
+<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+  <div class="kpi-card"><div class="kpi-label">Actividades</div><div class="kpi-value orange">{{ activities|length }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">Objetos de costo</div><div class="kpi-value">{{ objects|length }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">Asignaciones</div><div class="kpi-value">{{ existing|length }}</div></div>
+</div>
+
+{% if not activities or not objects %}
+<div class="alert alert-warning"><i class="ti ti-alert-triangle"></i>
+  {% if not activities %}Crea <a href="{{ url_for('activities.new') }}">Actividades</a>.{% endif %}
+  {% if not objects %}Crea <a href="{{ url_for('cost_objects.new') }}">Objetos de Costo</a>.{% endif %}
+</div>
+{% else %}
+
+{% if existing %}
+<div class="card mb-2" style="margin-bottom:20px">
+  <div class="card-header"><span class="card-title"><i class="ti ti-check" style="color:var(--success)"></i> Asignaciones guardadas</span></div>
+  <div class="table-wrap"><table class="table" style="font-size:13px">
+    <thead><tr><th>Actividad</th><th>Objeto de costo</th><th class="number">Inductor</th><th class="number">%</th><th class="number">Monto</th><th class="actions">Acciones</th></tr></thead>
+    <tbody>
+      {% for e in existing %}
+      <tr>
+        <td>{{ e.act_name }}</td><td>{{ e.obj_name }}</td>
+        <td class="number">{{ e.driver_quantity }}</td>
+        <td style="font-size:11px;color:var(--text-secondary)" class="number">{{ e.driver_percentage | round(1) }}%</td>
+        <td class="amt-cell number">{{ e.allocated_amount | currency }}</td>
+        <td class="actions">
+          <form method="POST" action="{{ url_for('abc.delete_step3_allocation', mid=model.id, allocation_id=e.id) }}" style="display:inline">
+            <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar esta asignación?"><i class="ti ti-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header"><span class="card-title"><i class="ti ti-plus" style="color:var(--primary)"></i> Agregar asignación</span></div>
+  <div class="card-body">
+    <div class="form-grid-3" style="align-items:flex-end;gap:12px">
+      <div class="form-group mb-0"><label class="form-label">Actividad</label>
+        <select id="sel-activity" class="form-control">{% for a in activities %}<option value="{{ a.id }}">{{ a.name }} ({{ a.center_name }})</option>{% endfor %}</select>
+      </div>
+      <div class="form-group mb-0"><label class="form-label">Objeto de costo</label>
+        <select id="sel-object" class="form-control">{% for o in objects %}<option value="{{ o.id }}">{{ o.name }} ({{ o.quantity_month }} uds)</option>{% endfor %}</select>
+      </div>
+      <div class="form-group mb-0"><label class="form-label">Cantidad del inductor</label>
+        <input type="number" id="inp-driver" class="form-control" step="0.01" min="0" value="0">
+      </div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="saveAlloc()"><i class="ti ti-device-floppy"></i> Guardar</button>
+      <button class="btn btn-success" onclick="calculateAndGo()"><i class="ti ti-calculator"></i> Calcular resultados</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const MODEL_ID = {{ model.id }};
+async function saveAlloc() {
+  const activity_id = document.getElementById('sel-activity').value;
+  const object_id   = document.getElementById('sel-object').value;
+  const driver_qty  = parseFloat(document.getElementById('inp-driver').value || 0);
+  const res = await fetch(`/abc/${MODEL_ID}/step3`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({allocations:[{activity_id,object_id,driver_qty}]})
+  });
+  const data = await res.json();
+  if (data.success) { showToast('Guardado','success'); setTimeout(()=>location.reload(),600); }
+  else showToast('Error','error');
+}
+
+async function calculateAndGo() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Calculando...';
+  const res = await fetch(`/abc/${MODEL_ID}/calculate`, { method:'POST' });
+  const data = await res.json();
+  if (data.success) {
+    showToast(`${data.count} objetos calculados`, 'success');
+    setTimeout(() => location.href = data.redirect, 800);
+  } else {
+    showToast(data.error || 'Error', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-calculator"></i> Calcular resultados';
+  }
+}
+</script>
+{% endblock %}

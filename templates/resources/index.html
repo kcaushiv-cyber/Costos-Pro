@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block title %}Recursos{% endblock %}
+{% block breadcrumb %}Recursos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Recursos</h1>
+    <p class="page-subtitle">Nivel 1 del ABC — costos indirectos que se distribuyen a los centros de actividad</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            onclick="showHelpModal('¿Qué son los Recursos?',
+              'Los recursos son todos los costos y gastos en que incurre la empresa: energía eléctrica, nómina de personal indirecto, depreciación de equipos, seguros, etc. En el ABC, cada recurso tiene un inductor (Kw-h, horas, m²) que permite distribuirlo a los centros de actividad de forma proporcional.')">
+      <i class="ti ti-help-circle"></i> Ayuda
+    </button>
+    <button class="btn btn-secondary btn-sm"
+            onclick="CostosChatbox.sendQuick('Sugiere recursos típicos para una empresa del sector {{ current_sector }}', 'abc')">
+      <i class="ti ti-robot"></i> Sugerir recursos con IA
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('resources')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+    <a href="{{ url_for('resources.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Nuevo recurso
+    </a>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:20px">
+  <div class="kpi-card">
+    <i class="ti ti-database kpi-icon"></i>
+    <div class="kpi-label">Total recursos</div>
+    <div class="kpi-value orange">{{ resources|length }}</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-coin kpi-icon"></i>
+    <div class="kpi-label">Total mensual</div>
+    <div class="kpi-value">{{ total | currency }}</div>
+  </div>
+  {% for code, label in categories %}
+    {% if by_cat.get(code) %}
+    <div class="kpi-card">
+      <div class="kpi-label">{{ label.split(' ')[0] }}</div>
+      <div class="kpi-value" style="font-size:18px">{{ by_cat[code] | currency }}</div>
+    </div>
+    {% endif %}
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-database" style="color:var(--primary)"></i> Lista de recursos</span>
+    <div style="font-size:12px;color:var(--text-secondary)">
+      Período: {{ current_period or 'Sin período' }}
+    </div>
+  </div>
+
+  {% if resources %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Código</th><th>Nombre</th><th>Categoría</th>
+          <th>Inductor</th>
+          <th class="number">Monto mensual</th>
+          <th class="number">Monto anual</th>
+          <th class="actions">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in resources %}
+        <tr>
+          <td><span class="badge badge-neutral">{{ r.code }}</span></td>
+          <td style="font-weight:500">{{ r.name }}</td>
+          <td>
+            <span class="badge badge-primary">{{ r.category or 'otros' }}</span>
+          </td>
+          <td style="font-size:12px;color:var(--text-secondary)">
+            {{ r.driver_type or '—' }}
+          </td>
+          <td class="number"><strong>{{ r.monthly_amount | currency }}</strong></td>
+          <td class="number">{{ r.annual_amount | currency }}</td>
+          <td class="actions">
+            <a href="{{ url_for('resources.edit', rid=r.id) }}"
+               class="btn btn-ghost btn-sm btn-icon" title="Editar">
+              <i class="ti ti-edit"></i>
+            </a>
+            <form method="POST" action="{{ url_for('resources.delete', rid=r.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm btn-icon"
+                      data-confirm="¿Eliminar este recurso?" title="Eliminar">
+                <i class="ti ti-trash"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--bg-secondary);font-weight:600">
+          <td colspan="4">Total</td>
+          <td class="number">{{ total | currency }}</td>
+          <td class="number">{{ (total * 12) | currency }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="ti ti-database"></i>
+    <h3>Sin recursos registrados</h3>
+    <p>Los recursos son la base del sistema ABC. Registra energía, personal indirecto, depreciación, etc.</p>
+    <a href="{{ url_for('resources.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Agregar primer recurso
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card mt-2" style="margin-top:16px">
+  <div class="card-body" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <i class="ti ti-arrow-right" style="color:var(--primary);font-size:20px"></i>
+    <span style="font-size:13px;color:var(--text-secondary)">
+      Siguiente paso: asigna estos recursos a los
+      <a href="{{ url_for('activity_centers.index') }}">Centros de Actividad</a>
+      usando inductores, o crea un
+      <a href="{{ url_for('abc.new') }}">modelo ABC</a> directamente.
+    </span>
+  </div>
+</div>
+{% endblock %}

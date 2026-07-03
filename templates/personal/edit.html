@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% block title %}Editar — {{ employee.full_name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('personal.index') }}">Personal</a> / Editar{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Editar Trabajador</h1>
+    <p class="page-subtitle">{{ employee.full_name }} · {{ employee.code }}</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('personal.detail', eid=employee.id) }}" class="btn btn-secondary">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start">
+  <div>
+    <form method="POST" action="{{ url_for('personal.edit', eid=employee.id) }}" id="edit-form">
+
+      <div class="card mb-2">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-user" style="color:var(--primary)"></i> Datos personales</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Código <span class="required">*</span></label>
+              <input type="text" name="code" class="form-control" required
+                     value="{{ employee.code }}" maxlength="20">
+            </div>
+            <div class="form-group">
+              <label class="form-label">DNI</label>
+              <input type="text" name="dni" class="form-control"
+                     value="{{ employee.dni or '' }}" maxlength="8">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nombres y apellidos <span class="required">*</span></label>
+            <input type="text" name="full_name" class="form-control" required
+                   value="{{ employee.full_name }}">
+          </div>
+
+          <div class="form-grid">
+            <!-- Departamento: texto libre con sugerencias -->
+            <div class="form-group">
+              <label class="form-label">Departamento</label>
+              <input type="text" name="department_name" class="form-control"
+                     list="dept-list"
+                     placeholder="Escribe o selecciona..."
+                     value="{{ employee.dept_name or '' }}">
+              <datalist id="dept-list">
+                {% for d in departments %}
+                  <option value="{{ d.name }}">
+                {% endfor %}
+              </datalist>
+            </div>
+            <!-- Cargo: texto libre con sugerencias -->
+            <div class="form-group">
+              <label class="form-label">Cargo</label>
+              <input type="text" name="position_name" class="form-control"
+                     list="pos-list"
+                     placeholder="Escribe o selecciona..."
+                     value="{{ employee.pos_name or '' }}">
+              <datalist id="pos-list">
+                {% for p in positions %}
+                  <option value="{{ p.name }}">
+                {% endfor %}
+              </datalist>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Tipo de mano de obra <span class="required">*</span></label>
+              <select name="labor_type" class="form-control" required>
+                {% for v, l in [('MOD','MOD — Directa'),('MOI','MOI — Indirecta'),('admin','Administrativo'),('ventas','Ventas')] %}
+                  <option value="{{ v }}" {% if employee.labor_type == v %}selected{% endif %}>{{ l }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tipo de contrato</label>
+              <select name="contract_type" class="form-control">
+                {% for v, l in [('indefinido','Indefinido'),('plazo_fijo','Plazo fijo'),('locacion','Locación'),('practicante','Practicante')] %}
+                  <option value="{{ v }}" {% if employee.contract_type == v %}selected{% endif %}>{{ l }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Fecha de ingreso</label>
+              <input type="date" name="start_date" class="form-control"
+                     value="{{ employee.start_date or '' }}">
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:16px;padding-top:28px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                <input type="checkbox" name="is_active" id="chk-active"
+                       {% if employee.is_active %}checked{% endif %}> Activo
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                <input type="checkbox" name="in_payroll" id="chk-payroll"
+                       {% if employee.in_payroll %}checked{% endif %}
+                       onchange="togglePayroll(this)"> En planilla
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-2">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-coin" style="color:var(--primary)"></i> Remuneraciones</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Sueldo básico (S/) <span class="required">*</span></label>
+              <input type="number" id="basic_salary" name="basic_salary" class="form-control"
+                     step="0.01" min="0" required value="{{ employee.basic_salary }}"
+                     oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Bonificaciones (S/)</label>
+              <input type="number" id="bonus" name="bonus" class="form-control"
+                     step="0.01" min="0" value="{{ employee.bonus or 0 }}"
+                     oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Asignación familiar (S/)</label>
+              <input type="number" id="family_allowance" name="family_allowance" class="form-control"
+                     step="0.01" min="0" value="{{ employee.family_allowance or 0 }}"
+                     oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Horas disponibles/mes</label>
+              <input type="number" id="hours" name="available_hours_month" class="form-control"
+                     step="1" min="1" value="{{ employee.available_hours_month or 192 }}"
+                     oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">SCTR (S/)</label>
+              <input type="number" id="sctr" name="sctr" class="form-control"
+                     step="0.01" min="0" value="{{ employee.sctr or 0 }}"
+                     oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Otros beneficios (S/)</label>
+              <input type="number" id="other_benefits" name="other_benefits" class="form-control"
+                     step="0.01" min="0" value="{{ employee.other_benefits or 0 }}"
+                     oninput="recalculate()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notas</label>
+        <textarea name="notes" class="form-control" rows="2">{{ employee.notes or '' }}</textarea>
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button type="submit" class="btn btn-primary">
+          <i class="ti ti-device-floppy"></i> Guardar cambios
+        </button>
+        <a href="{{ url_for('personal.detail', eid=employee.id) }}" class="btn btn-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Panel costo en tiempo real -->
+  <div class="card" style="position:sticky;top:20px">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-calculator" style="color:var(--primary)"></i> Costo actualizado</span>
+      <span class="badge badge-success" style="font-size:11px">Tiempo real</span>
+    </div>
+    <div class="card-body">
+      <table class="table" style="font-size:13px">
+        <tbody>
+          <tr><td>Sueldo básico</td>               <td class="number" id="r-basic">{{ employee.basic_salary | currency }}</td></tr>
+          <tr id="row-grat"><td>Gratificación (1/6)</td>          <td class="number" id="r-grat">{{ employee.gratification_monthly | currency }}</td></tr>
+          <tr id="row-cts"><td>CTS mensualizada</td>            <td class="number" id="r-cts">{{ employee.cts_monthly | currency }}</td></tr>
+          <tr id="row-ess"><td>Essalud (9%)</td>                 <td class="number" id="r-ess">{{ employee.essalud | currency }}</td></tr>
+          <tr id="row-sctr"><td>SCTR</td>                          <td class="number" id="r-sctr">{{ employee.sctr | currency }}</td></tr>
+          <tr><td>Bonificaciones</td>               <td class="number" id="r-bonus">{{ employee.bonus | currency }}</td></tr>
+          <tr style="background:var(--primary);color:#fff;font-weight:700">
+            <td>COSTO TOTAL / MES</td>
+            <td class="number" id="r-total">{{ employee.total_monthly_cost | currency }}</td>
+          </tr>
+          <tr><td>Costo por hora</td>               <td class="number" id="r-hour">{{ employee.cost_per_hour | round(4) }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const inPayroll = document.getElementById('chk-payroll');
+
+function fmt(n) {
+  return 'S/ ' + (+n).toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function recalculate() {
+  const payroll = inPayroll.checked;
+  const basic   = parseFloat(document.getElementById('basic_salary').value) || 0;
+  const bonus   = parseFloat(document.getElementById('bonus').value) || 0;
+  const family  = parseFloat(document.getElementById('family_allowance').value) || 0;
+  const sctr    = parseFloat(document.getElementById('sctr').value) || 0;
+  const other   = parseFloat(document.getElementById('other_benefits').value) || 0;
+  const hours   = parseFloat(document.getElementById('hours').value) || 192;
+
+  const base    = basic + bonus + family;
+
+  // Si no está en planilla → beneficios sociales = 0
+  const grat    = payroll ? base / 6            : 0;
+  const cts     = payroll ? base * 7 / 72       : 0;
+  const ess     = payroll ? basic * 0.09        : 0;
+  const sctrVal = payroll ? sctr                : 0;
+
+  const total   = base + grat + cts + ess + sctrVal + other;
+  const perHour = hours > 0 ? total / hours : 0;
+
+  document.getElementById('r-basic').textContent = fmt(basic);
+  document.getElementById('r-grat').textContent  = fmt(grat);
+  document.getElementById('r-cts').textContent   = fmt(cts);
+  document.getElementById('r-ess').textContent   = fmt(ess);
+  document.getElementById('r-sctr').textContent  = fmt(sctrVal);
+  document.getElementById('r-bonus').textContent = fmt(bonus);
+  document.getElementById('r-total').textContent = fmt(total);
+  document.getElementById('r-hour').textContent  = perHour.toFixed(4);
+
+  // Atenuar filas de beneficios cuando no está en planilla
+  ['row-grat','row-cts','row-ess','row-sctr'].forEach(id => {
+    const row = document.getElementById(id);
+    if (row) row.style.opacity = payroll ? '1' : '0.35';
+  });
+}
+
+function togglePayroll(cb) {
+  recalculate();
+}
+
+// Calcular al cargar
+recalculate();
+</script>
+{% endblock %}

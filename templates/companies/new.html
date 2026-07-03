@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block title %}Nueva Empresa{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('companies.select') }}">Empresas</a> / Nueva{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Nueva Empresa</h1>
+    <p class="page-subtitle">Registra los datos de tu empresa y crea el primer período contable</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('companies.select') }}" class="btn btn-secondary">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<div style="max-width:700px">
+  <form method="POST" action="{{ url_for('companies.new') }}">
+
+    <div class="card mb-2">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-building" style="color:var(--primary)"></i> Datos de la empresa</span>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">Razón social <span class="required">*</span></label>
+          <input type="text" name="business_name" class="form-control" required
+                 placeholder="Mi Empresa S.A.C.">
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Nombre comercial</label>
+            <input type="text" name="trade_name" class="form-control" placeholder="Opcional">
+          </div>
+          <div class="form-group">
+            <label class="form-label">RUC</label>
+            <input type="text" name="ruc" class="form-control" placeholder="20XXXXXXXXX" maxlength="11">
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Sector <span class="required">*</span>
+              <span class="help-btn"
+                data-help="El sector define las plantillas de costos disponibles y los ejemplos que muestra el asistente IA."
+                data-help-title="Sector empresarial">?</span>
+            </label>
+            <select name="sector" class="form-control" required>
+              {% for s in sectors %}
+                <option value="{{ s }}">{{ s|title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subsector</label>
+            <input type="text" name="subsector" class="form-control" placeholder="Ej: textil, alimentos...">
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Moneda</label>
+            <select name="currency" class="form-control">
+              <option value="PEN">PEN — Soles</option>
+              <option value="USD">USD — Dólares</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tasa IGV</label>
+            <input type="number" name="igv_rate" class="form-control"
+                   step="0.01" value="0.18">
+            <span class="form-hint">0.18 = 18%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-2">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-calendar" style="color:var(--primary)"></i> Primer período contable</span>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Nombre del período <span class="required">*</span></label>
+            <input type="text" name="period_name" class="form-control" required
+                   placeholder="Enero 2025" value="Enero 2025">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo de período</label>
+            <select name="period_type" class="form-control">
+              <option value="monthly">Mensual</option>
+              <option value="quarterly">Trimestral</option>
+              <option value="annual">Anual</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Fecha inicio <span class="required">*</span></label>
+            <input type="date" name="start_date" class="form-control" required value="2025-01-01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha fin <span class="required">*</span></label>
+            <input type="date" name="end_date" class="form-control" required value="2025-01-31">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button type="submit" class="btn btn-primary">
+        <i class="ti ti-building-plus"></i> Crear empresa
+      </button>
+      <a href="{{ url_for('companies.select') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Objetos de Costo{% endblock %}
+{% block breadcrumb %}Objetos de Costo{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Objetos de Costo</h1>
+    <p class="page-subtitle">Nivel 4 del ABC — productos, servicios o clientes que reciben los costos calculados</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            onclick="showHelpModal('Objetos de Costo',
+              'El objeto de costo es aquello para lo que se quiere calcular el costo: un producto, un servicio, un cliente, una línea de negocio, etc. Las actividades del ABC distribuyen sus costos a estos objetos usando inductores. El resultado es el costo unitario ABC.')">
+      <i class="ti ti-help-circle"></i> Ayuda
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('cost_objects')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+    <a href="{{ url_for('cost_objects.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Nuevo objeto
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-target" style="color:var(--primary)"></i> Objetos de costo del período</span>
+    <span class="badge badge-neutral">{{ objects|length }}</span>
+  </div>
+  {% if objects %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Código</th><th>Nombre</th><th>Producto vinculado</th><th class="number">Qty/mes</th><th class="number">Costo unit. ABC</th><th class="number">Costo unit. trad.</th><th class="actions">Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for o in objects %}
+        <tr>
+          <td><span class="badge badge-neutral">{{ o.code }}</span></td>
+          <td style="font-weight:500">{{ o.name }}</td>
+          <td style="color:var(--text-secondary)">{{ o.product_name or '—' }}</td>
+          <td class="number">{{ o.quantity_month or 0 }}</td>
+          <td class="number">
+            {% set abc_cost = o.abc_unit_cost_latest if o.abc_unit_cost_latest is not none else o.unit_cost_abc %}
+            {% if o.abc_unit_cost_latest is not none or abc_cost %}
+              <strong style="color:var(--primary)">{{ abc_cost | currency }}</strong>
+            {% else %}
+              <span style="color:var(--text-light)">— (sin calcular)</span>
+            {% endif %}
+          </td>
+          <td class="number">
+            {% set trad_cost = o.trad_unit_cost_latest if o.trad_unit_cost_latest is not none else o.unit_cost_traditional %}
+            {{ trad_cost | currency if trad_cost else '—' }}
+          </td>
+          <td class="actions">
+            <a href="{{ url_for('cost_objects.edit', oid=o.id) }}" class="btn btn-ghost btn-sm btn-icon"><i class="ti ti-edit"></i></a>
+            <form method="POST" action="{{ url_for('cost_objects.delete', oid=o.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar este objeto?"><i class="ti ti-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="ti ti-target"></i>
+    <h3>Sin objetos de costo</h3>
+    <p>Los objetos de costo son los productos o servicios a los que asignarás costos en el modelo ABC.</p>
+    <a href="{{ url_for('cost_objects.new') }}" class="btn btn-primary"><i class="ti ti-plus"></i> Crear objeto de costo</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

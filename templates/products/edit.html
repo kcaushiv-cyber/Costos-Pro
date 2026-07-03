@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Editar — {{ product.name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('products.index') }}">Productos</a> / Editar{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Editar Producto</h1>
+    <p class="page-subtitle">{{ product.name }} · {{ product.code }}</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('products.index') }}" class="btn btn-secondary">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<div style="max-width:640px">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-package" style="color:var(--primary)"></i> Editar datos</span>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('products.edit', pid=product.id) }}">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Código <span class="required">*</span></label>
+            <input type="text" name="code" class="form-control" required
+                   value="{{ product.code }}" maxlength="30">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Categoría</label>
+            <select name="category" class="form-control">
+              {% for v,l in [('producto','Producto terminado'),('servicio','Servicio'),('semielaborado','Semielaborado'),('materia_prima','Materia Prima')] %}
+                <option value="{{ v }}" {% if product.category == v %}selected{% endif %}>{{ l }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombre <span class="required">*</span></label>
+          <input type="text" name="name" class="form-control" required value="{{ product.name }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <textarea name="description" class="form-control" rows="2">{{ product.description or '' }}</textarea>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Unidad de medida</label>
+            <select name="unit_id" class="form-control">
+              <option value="">Sin unidad</option>
+              {% for u in units %}
+                <option value="{{ u.id }}" {% if product.unit_id == u.id %}selected{% endif %}>
+                  {{ u.name }} ({{ u.code }})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group" style="display:flex;align-items:center;padding-top:28px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input type="checkbox" name="is_active" {% if product.is_active %}checked{% endif %}>
+              Activo
+            </label>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Precio de venta (S/)</label>
+            <input type="number" name="sale_price" class="form-control"
+                   step="0.01" min="0" value="{{ product.sale_price }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Costo estándar (S/)</label>
+            <input type="number" name="standard_cost" class="form-control"
+                   step="0.01" min="0" value="{{ product.standard_cost }}">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button type="submit" class="btn btn-primary">
+            <i class="ti ti-device-floppy"></i> Guardar cambios
+          </button>
+          <a href="{{ url_for('products.index') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

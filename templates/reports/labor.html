@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Reporte Personal{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('reports.index') }}">Reportes</a> / Personal{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Reporte: Personal y MOD</h1><p class="page-subtitle">{{ current_company }}</p></div>
+  <div class="page-actions">
+    <a href="{{ url_for('reports.export_excel', report_type='labor') }}" class="btn btn-secondary btn-sm"><i class="ti ti-file-spreadsheet"></i> Excel</a>
+    <a href="{{ url_for('reports.index') }}" class="btn btn-ghost btn-sm"><i class="ti ti-arrow-left"></i></a>
+  </div>
+</div>
+
+<!-- KPIs por tipo -->
+<div class="kpi-grid" style="margin-bottom:20px">
+  {% for tipo, vals in data.by_type.items() %}
+  <div class="kpi-card">
+    <div class="kpi-label">{{ tipo }}</div>
+    <div class="kpi-value orange">{{ vals.count }} personas</div>
+    <div class="kpi-sub">{{ vals.total_cost | currency }}/mes</div>
+  </div>
+  {% endfor %}
+  <div class="kpi-card">
+    <div class="kpi-label">TOTAL PLANILLA</div>
+    <div class="kpi-value">{{ data.total_cost | currency }}</div>
+    <div class="kpi-sub">{{ data.total_headcount }} trabajadores</div>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start">
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="ti ti-chart-donut" style="color:var(--primary)"></i> Distribución por tipo</span></div>
+    <div class="card-body"><canvas id="chart-labor" height="220"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="ti ti-users" style="color:var(--primary)"></i> Top 10 por costo</span></div>
+    <div class="table-wrap">
+      <table class="table" style="font-size:12.5px">
+        <thead><tr><th>Nombre</th><th>Tipo</th><th class="number">Costo/mes</th><th class="number">S/./hora</th></tr></thead>
+        <tbody>
+          {% for e in data.employees[:10] %}
+          <tr>
+            <td>{{ e.full_name }}<div style="font-size:11px;color:var(--text-secondary)">{{ e.dept_name or '—' }}</div></td>
+            <td><span class="badge badge-{{ 'success' if e.labor_type=='MOD' else 'neutral' }}">{{ e.labor_type }}</span></td>
+            <td class="number"><strong>{{ e.total_monthly_cost | currency }}</strong></td>
+            <td class="number">{{ e.cost_per_hour | round(2) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const types = {{ data.by_type.keys() | list | tojson }};
+const costs = {{ data.by_type.values() | map(attribute='total_cost') | list | tojson }};
+new Chart(document.getElementById('chart-labor'), {
+  type: 'doughnut',
+  data: {
+    labels: types,
+    datasets: [{ data: costs, backgroundColor: ['#F97316','#3B82F6','#22C55E','#FACC15'], borderWidth:2, borderColor:'#fff' }]
+  },
+  options: { responsive:true, plugins: { legend: { position:'bottom' } } }
+});
+</script>
+{% endblock %}

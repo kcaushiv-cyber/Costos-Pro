@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block title %}Costeo ABC{% endblock %}
+{% block breadcrumb %}Costeo ABC{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Costeo ABC</h1>
+    <p class="page-subtitle">Modelos de distribución: Recursos → Centros → Actividades → Objetos de Costo</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            onclick="showHelpModal('Costeo ABC',
+              'El Costeo Basado en Actividades (ABC) distribuye los costos indirectos en 4 niveles: 1) Los recursos (energía, personal, depreciación) se distribuyen a los centros de actividad. 2) Los centros se distribuyen a las actividades específicas. 3) Las actividades se distribuyen a los objetos de costo (productos/servicios) usando inductores. 4) El resultado es el costo real de cada producto.')">
+      <i class="ti ti-help-circle"></i> Ayuda
+    </button>
+    <button class="btn btn-secondary btn-sm"
+            onclick="CostosChatbox.sendQuick('Explícame el proceso ABC paso a paso para mi empresa del sector {{ current_sector }}', 'abc')">
+      <i class="ti ti-robot"></i> Consultar IA
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('abc_full')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+        <a href="{{ url_for('abc.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Nuevo modelo ABC
+    </a>
+  </div>
+</div>
+
+<!-- Flujo ABC visual -->
+<div class="card mb-2" style="margin-bottom:20px">
+  <div class="card-body" style="padding:16px">
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">
+      {% for label, icon, route, active_count in [
+        ('Recursos', 'ti-database', 'resources.index', ''),
+        ('→', '', '', ''),
+        ('Centros', 'ti-layout-grid', 'activity_centers.index', ''),
+        ('→', '', '', ''),
+        ('Actividades', 'ti-activity', 'activities.index', ''),
+        ('→', '', '', ''),
+        ('Objetos', 'ti-target', 'cost_objects.index', ''),
+        ('→', '', '', ''),
+        ('Resultados', 'ti-chart-bar', '', ''),
+      ] %}
+        {% if icon %}
+          <a href="{{ url_for(route) if route else '#' }}"
+             style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--primary-xlight);border-radius:var(--radius-md);font-size:13px;font-weight:500;color:var(--primary);text-decoration:none;border:1px solid var(--primary-light)">
+            <i class="ti {{ icon }}"></i> {{ label }}
+          </a>
+        {% else %}
+          <span style="color:var(--text-light);font-size:18px">{{ label }}</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% if models %}
+<div class="grid-2">
+  {% for m in models %}
+  <div class="card">
+    <div class="card-body">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
+        <div>
+          <div style="font-size:15px;font-weight:600">{{ m.name }}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">
+            {{ current_period }} · {{ m.sector or current_sector }}
+          </div>
+        </div>
+        <span class="badge {{ 'badge-success' if m.status=='aprobado' else ('badge-warning' if m.status=='calculado' else 'badge-neutral') }}">
+          {{ m.status }}
+        </span>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+        <div style="text-align:center;flex:1">
+          <div style="font-size:20px;font-weight:700;color:var(--primary)">{{ m.res_count }}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">recursos</div>
+        </div>
+        <div style="text-align:center;flex:1">
+          <div style="font-size:20px;font-weight:700">{{ m.result_count }}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">objetos calc.</div>
+        </div>
+        <div style="text-align:center;flex:1">
+          <div style="font-size:20px;font-weight:700">{{ m.desired_margin | round(0) }}%</div>
+          <div style="font-size:11px;color:var(--text-secondary)">margen</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="{{ url_for('abc.step1_resources', mid=m.id) }}" class="btn btn-secondary btn-sm">
+          <i class="ti ti-edit"></i> Editar inductores
+        </a>
+        {% if m.result_count %}
+        <a href="{{ url_for('abc.results', mid=m.id) }}" class="btn btn-primary btn-sm">
+          <i class="ti ti-chart-bar"></i> Ver resultados
+        </a>
+        {% else %}
+        <button class="btn btn-primary btn-sm" onclick="calculateABC({{ m.id }})">
+          <i class="ti ti-calculator"></i> Calcular
+        </button>
+        {% endif %}
+        <form method="POST" action="{{ url_for('abc.delete', mid=m.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar este modelo ABC?">
+            <i class="ti ti-trash"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    <i class="ti ti-calculator"></i>
+    <h3>Sin modelos ABC</h3>
+    <p>Crea tu primer modelo ABC para calcular el costo real de cada producto o servicio.</p>
+    <div style="margin-bottom:16px;font-size:13px;color:var(--text-secondary)">
+      Asegúrate de tener registrados: recursos, centros de actividad, actividades y objetos de costo.
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('abc_full')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+        <a href="{{ url_for('abc.new') }}" class="btn btn-primary"><i class="ti ti-plus"></i> Crear modelo ABC</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function calculateABC(mid) {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Calculando...';
+  try {
+    const res = await fetch(`/abc/${mid}/calculate`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`${data.count} objetos calculados`, 'success');
+      setTimeout(() => location.href = data.redirect, 800);
+    } else {
+      showToast(data.error || 'Error al calcular', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-calculator"></i> Calcular';
+    }
+  } catch (e) {
+    showToast('Error de conexión', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-calculator"></i> Calcular';
+  }
+}
+</script>
+<style>@keyframes spin { to { transform:rotate(360deg); } }</style>
+{% endblock %}

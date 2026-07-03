@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; }
+  body { background:#fff; color:#1F2937; font-size:13px; padding:30px; }
+  .header { background:#1F2937; color:#fff; padding:20px 24px; border-radius:8px; margin-bottom:24px; }
+  .header h1 { font-size:20px; font-weight:700; }
+  .header p  { font-size:12px; opacity:0.7; margin-top:4px; }
+  .section { margin-bottom:20px; }
+  .section h2 { font-size:14px; font-weight:700; color:#F97316; margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid #F97316; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { background:#F97316; color:#fff; padding:7px 10px; text-align:left; font-weight:600; }
+  td { padding:6px 10px; border-bottom:1px solid #E5D5C5; }
+  tr:nth-child(even) td { background:#FFF8F1; }
+  .total-row td { background:#F97316; color:#fff; font-weight:700; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+  .kpi { background:#FFF8F1; border:1px solid #E5D5C5; border-radius:8px; padding:14px; text-align:center; }
+  .kpi .val { font-size:20px; font-weight:700; color:#F97316; }
+  .kpi .lbl { font-size:11px; color:#6B7280; margin-top:4px; }
+  .footer { margin-top:30px; padding-top:12px; border-top:1px solid #E5D5C5; font-size:11px; color:#9CA3AF; text-align:center; }
+  @media print { body { padding:15px; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Reporte Ejecutivo — {{ company_name }}</h1>
+  <p>Período: {{ period_name }} &nbsp;|&nbsp; Generado: {{ today }}</p>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="val">S/ {{ "{:,.0f}".format(summary.presupuesto.ventas) }}</div><div class="lbl">Ventas proyectadas</div></div>
+  <div class="kpi"><div class="val">{{ summary.presupuesto.margen_pct }}%</div><div class="lbl">Margen bruto</div></div>
+  <div class="kpi"><div class="val">{{ summary.personal.total }}</div><div class="lbl">Personal activo</div></div>
+</div>
+
+<div class="section">
+  <h2>Presupuesto y Rentabilidad</h2>
+  <table>
+    <tr><th>Concepto</th><th>Importe</th></tr>
+    <tr><td>Ventas proyectadas</td><td>S/ {{ "{:,.2f}".format(summary.presupuesto.ventas) }}</td></tr>
+    <tr><td>Costo de producción</td><td>S/ {{ "{:,.2f}".format(summary.presupuesto.costo) }}</td></tr>
+    <tr class="total-row"><td>Utilidad bruta</td><td>S/ {{ "{:,.2f}".format(summary.presupuesto.utilidad) }}</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>Personal</h2>
+  <table>
+    <tr><th>Concepto</th><th>Valor</th></tr>
+    <tr><td>Total trabajadores</td><td>{{ summary.personal.total }}</td></tr>
+    <tr><td>Costo planilla/mes</td><td>S/ {{ "{:,.2f}".format(summary.personal.costo_mes) }}</td></tr>
+    <tr><td>MOD</td><td>S/ {{ "{:,.2f}".format(summary.personal.costo_mod) }}</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>Costos de Calidad (PAF)</h2>
+  <table>
+    <tr><th>Concepto</th><th>Valor</th></tr>
+    <tr><td>Total costo calidad</td><td>S/ {{ "{:,.2f}".format(summary.calidad.total) }}</td></tr>
+    <tr><td>% en fallas</td><td>{{ summary.calidad.pct_fallas }}%</td></tr>
+    <tr><td>% sobre ventas</td><td>{{ summary.calidad.pct_ventas }}%</td></tr>
+  </table>
+</div>
+
+<div class="footer">
+  Costos Pro v5 &nbsp;|&nbsp; {{ company_name }} &nbsp;|&nbsp; Documento confidencial
+</div>
+</body>
+</html>

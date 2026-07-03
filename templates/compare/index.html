@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Comparar Períodos{% endblock %}
+{% block breadcrumb %}Comparar Períodos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Comparar Períodos</h1>
+    <p class="page-subtitle">Análisis de variación entre dos períodos contables</p>
+  </div>
+</div>
+
+<div class="card mb-2" style="margin-bottom:20px">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('compare.index') }}" style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+      <div class="form-group mb-0">
+        <label class="form-label">Período base (anterior)</label>
+        <select name="p1" class="form-control" style="width:200px">
+          <option value="">Seleccionar...</option>
+          {% for p in periods %}
+            <option value="{{ p.id }}" {% if pid1 == p.id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="font-size:24px;color:var(--text-light);padding-bottom:8px">→</div>
+      <div class="form-group mb-0">
+        <label class="form-label">Período actual</label>
+        <select name="p2" class="form-control" style="width:200px">
+          <option value="">Seleccionar...</option>
+          {% for p in periods %}
+            <option value="{{ p.id }}" {% if pid2 == p.id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">
+        <i class="ti ti-arrows-diff"></i> Comparar
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if data1 and data2 %}
+{% set metrics = [
+  ('Ventas proyectadas',      'ventas',       True),
+  ('Costo de producción',     'costo_prod',   False),
+  ('Utilidad bruta',          'utilidad',     True),
+  ('Margen bruto %',          'margen_pct',   True),
+  ('Costo personal mensual',  'costo_personal', False),
+  ('Headcount',               'headcount',    True),
+  ('Stock valorizado',        'stock_valor',  True),
+  ('Costo de calidad',        'costo_calidad',False),
+  ('Modelos ABC calculados',  'modelos_abc',  True),
+] %}
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-arrows-diff" style="color:var(--primary)"></i> Comparativa: {{ period1.name }} → {{ period2.name }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:30%">Indicador</th>
+          <th class="number">{{ period1.name }}</th>
+          <th class="number">{{ period2.name }}</th>
+          <th class="number">Variación %</th>
+          <th>Tendencia</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for label, key, positive_up in metrics %}
+        {% set v = vars[key] %}
+        {% set up   = v > 0 %}
+        {% set down = v < 0 %}
+        {% set good = (up and positive_up) or (down and not positive_up) %}
+        {% set bad  = (down and positive_up) or (up and not positive_up) %}
+        <tr>
+          <td style="font-weight:500">{{ label }}</td>
+          <td class="number" style="color:var(--text-secondary)">
+            {% if key in ('margen_pct',) %}{{ data1[key] }}%
+            {% elif key in ('headcount','modelos_abc') %}{{ data1[key] | int }}
+            {% else %}{{ data1[key] | currency }}{% endif %}
+          </td>
+          <td class="number" style="font-weight:600">
+            {% if key in ('margen_pct',) %}{{ data2[key] }}%
+            {% elif key in ('headcount','modelos_abc') %}{{ data2[key] | int }}
+            {% else %}{{ data2[key] | currency }}{% endif %}
+          </td>
+          <td class="number" style="font-weight:700;color:{{ 'var(--success)' if good else ('var(--danger)' if bad else 'var(--text-secondary)') }}">
+            {{ '+' if v > 0 else '' }}{{ v }}%
+          </td>
+          <td>
+            {% if v == 0 %}
+              <span style="color:var(--text-secondary)">─</span>
+            {% elif good %}
+              <span style="color:var(--success)">▲ Mejora</span>
+            {% else %}
+              <span style="color:var(--danger)">▼ Deterioro</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card mt-2" style="margin-top:16px">
+  <div class="card-body" style="text-align:center">
+    <button class="btn btn-primary"
+            onclick="CostosChatbox.sendQuick('Analiza la variación entre períodos: ventas {{ vars.ventas }}%, utilidad {{ vars.utilidad }}%, costo personal {{ vars.costo_personal }}%. ¿Qué recomiendas?', 'reportes')">
+      <i class="ti ti-robot"></i> Analizar variaciones con IA
+    </button>
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    <i class="ti ti-arrows-diff"></i>
+    <h3>Selecciona dos períodos para comparar</h3>
+    <p>Compara ventas, costos, utilidad y otros KPIs entre dos períodos contables.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

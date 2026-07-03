@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block title %}Personal y Mano de Obra{% endblock %}
+{% block breadcrumb %}Personal y Mano de Obra{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Personal y Mano de Obra</h1>
+    <p class="page-subtitle">Gestión de planilla, costos laborales y asignación a actividades</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            onclick="showHelpModal('Personal y MOD',
+              'Este módulo gestiona toda la planilla de trabajadores. Cada empleado tiene su costo mensual calculado automáticamente (básico + gratificación + CTS + Essalud + SCTR). El costo por hora se calcula dividiendo el costo total entre las horas disponibles al mes. Los empleados se clasifican en MOD (Mano de Obra Directa), MOI (Indirecta), Admin o Ventas.',
+              'Módulo de personal. Registra trabajadores, calcula costos laborales y asígnalos a actividades del sistema ABC.')">
+      <i class="ti ti-help-circle"></i> Ayuda
+    </button>
+    <button class="btn btn-secondary btn-sm"
+            onclick="CostosChatbox.sendQuick('Explícame cómo calcular el costo de un trabajador en planilla peruana', 'general')">
+      <i class="ti ti-robot"></i> Consultar IA
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('employees')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+        <a href="{{ url_for('personal.new') }}" class="btn btn-primary">
+      <i class="ti ti-user-plus"></i> Nuevo trabajador
+    </a>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:24px">
+  <div class="kpi-card">
+    <i class="ti ti-users kpi-icon"></i>
+    <div class="kpi-label">Total activos</div>
+    <div class="kpi-value orange">{{ team_costs.count_active }}</div>
+    <div class="kpi-sub">trabajadores</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-coin kpi-icon"></i>
+    <div class="kpi-label">Costo total/mes</div>
+    <div class="kpi-value">{{ team_costs.total_all | currency }}</div>
+    <div class="kpi-sub">planilla completa</div>
+  </div>
+  <div class="kpi-card success">
+    <i class="ti ti-hammer kpi-icon"></i>
+    <div class="kpi-label">MOD / mes</div>
+    <div class="kpi-value">{{ team_costs.total_mod | currency }}</div>
+    <div class="kpi-sub">{{ team_costs.pct_mod }}% del total</div>
+  </div>
+  <div class="kpi-card warning">
+    <i class="ti ti-tool kpi-icon"></i>
+    <div class="kpi-label">MOI / mes</div>
+    <div class="kpi-value">{{ team_costs.total_moi | currency }}</div>
+    <div class="kpi-sub">{{ team_costs.pct_moi }}% del total</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-briefcase kpi-icon"></i>
+    <div class="kpi-label">Administrativo</div>
+    <div class="kpi-value">{{ team_costs.total_admin | currency }}</div>
+    <div class="kpi-sub">gastos administrativos</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-shopping-cart kpi-icon"></i>
+    <div class="kpi-label">Ventas</div>
+    <div class="kpi-value">{{ team_costs.total_ventas | currency }}</div>
+    <div class="kpi-sub">gastos de ventas</div>
+  </div>
+</div>
+
+<!-- Filtros + Tabla -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-users" style="color:var(--primary)"></i> Nómina de trabajadores</span>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="search-box">
+          <i class="ti ti-search"></i>
+          <input type="text" name="search" value="{{ search }}" placeholder="Buscar por nombre, código o DNI...">
+        </div>
+        <select name="dept" class="form-control" style="width:auto;padding:8px 12px">
+          <option value="">Todos los departamentos</option>
+          {% for d in departments %}
+            <option value="{{ d.id }}" {% if dept_filter == d.id|string %}selected{% endif %}>
+              {{ d.name }}
+            </option>
+          {% endfor %}
+        </select>
+        <select name="type" class="form-control" style="width:auto;padding:8px 12px">
+          <option value="">Todos los tipos</option>
+          <option value="MOD" {% if type_filter == 'MOD' %}selected{% endif %}>MOD</option>
+          <option value="MOI" {% if type_filter == 'MOI' %}selected{% endif %}>MOI</option>
+          <option value="admin" {% if type_filter == 'admin' %}selected{% endif %}>Admin</option>
+          <option value="ventas" {% if type_filter == 'ventas' %}selected{% endif %}>Ventas</option>
+        </select>
+        <select name="status" class="form-control" style="width:auto;padding:8px 12px">
+          <option value="todos" {% if status_filter == 'todos' %}selected{% endif %}>Todos</option>
+          <option value="activo" {% if status_filter == 'activo' %}selected{% endif %}>Activos</option>
+          <option value="inactivo" {% if status_filter == 'inactivo' %}selected{% endif %}>Inactivos</option>
+        </select>
+        <button type="submit" class="btn btn-secondary btn-sm">
+          <i class="ti ti-search"></i> Buscar
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {% if employees %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Trabajador</th>
+          <th>Cargo</th>
+          <th>Departamento</th>
+          <th>Tipo</th>
+          <th class="number">Sueldo básico</th>
+          <th class="number">Costo total/mes</th>
+          <th class="number">S/. / hora</th>
+          <th>Estado</th>
+          <th class="actions">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emp in employees %}
+        <tr>
+          <td><span class="badge badge-neutral">{{ emp.code }}</span></td>
+          <td>
+            <div style="font-weight:500">{{ emp.full_name }}</div>
+            {% if emp.dni %}<div style="font-size:11px;color:var(--text-secondary)">DNI: {{ emp.dni }}</div>{% endif %}
+          </td>
+          <td>{{ emp.position_name or '—' }}</td>
+          <td>{{ emp.dept_name or '—' }}</td>
+          <td>
+            <span class="badge {{ 'badge-success' if emp.labor_type == 'MOD' else ('badge-info' if emp.labor_type == 'MOI' else 'badge-neutral') }}">
+              {{ emp.labor_type }}
+            </span>
+          </td>
+          <td class="number">{{ emp.basic_salary | currency }}</td>
+          <td class="number"><strong>{{ emp.total_monthly_cost | currency }}</strong></td>
+          <td class="number">{{ emp.cost_per_hour | round(2) }}</td>
+          <td>
+            <span class="badge {{ 'badge-success' if emp.is_active else 'badge-neutral' }}">
+              {{ 'Activo' if emp.is_active else 'Inactivo' }}
+            </span>
+          </td>
+          <td class="actions">
+            <a href="{{ url_for('personal.detail', eid=emp.id) }}" class="btn btn-ghost btn-sm btn-icon" title="Ver detalle">
+              <i class="ti ti-eye"></i>
+            </a>
+            <a href="{{ url_for('personal.edit', eid=emp.id) }}" class="btn btn-ghost btn-sm btn-icon" title="Editar">
+              <i class="ti ti-edit"></i>
+            </a>
+            <form method="POST" action="{{ url_for('personal.toggle_active', eid=emp.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm btn-icon"
+                      title="{{ 'Desactivar' if emp.is_active else 'Activar' }}"
+                      data-confirm="{{ '¿Desactivar este trabajador?' if emp.is_active else '¿Activar este trabajador?' }}">
+                <i class="ti ti-{{ 'toggle-right' if emp.is_active else 'toggle-left' }}"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--bg-secondary);font-weight:600">
+          <td colspan="5">Total ({{ employees|length }} trabajadores)</td>
+          <td class="number">—</td>
+          <td class="number">{{ team_costs.total_all | currency }}</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="ti ti-users"></i>
+    <h3>Sin trabajadores registrados</h3>
+    <p>Registra tu primer trabajador para calcular costos de mano de obra.</p>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('employees')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+        <a href="{{ url_for('personal.new') }}" class="btn btn-primary">
+      <i class="ti ti-user-plus"></i> Registrar trabajador
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+setTimeout(() => window.CostosProVoice?.sayModule('personal'), 800);
+</script>
+{% endblock %}

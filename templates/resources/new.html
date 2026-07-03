@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo Recurso{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('resources.index') }}">Recursos</a> / Nuevo{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Nuevo Recurso</h1>
+    <p class="page-subtitle">Registra un costo indirecto de la empresa con su inductor de distribución</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('resources.index') }}" class="btn btn-secondary">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<div style="max-width:640px">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-database" style="color:var(--primary)"></i> Datos del recurso</span>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('resources.new') }}">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Código <span class="required">*</span></label>
+            <input type="text" name="code" class="form-control" required
+                   placeholder="REC001" maxlength="20">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Categoría <span class="required">*</span></label>
+            <input type="text" name="category" class="form-control"
+                   list="cat-list-new" autocomplete="off" required
+                   placeholder="Ej: Mano de obra, Depreciación activos...">
+            <datalist id="cat-list-new">
+              {% for v, l in categories %}
+                <option value="{{ v }}">{{ l }}</option>
+              {% endfor %}
+            </datalist>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombre <span class="required">*</span></label>
+          <input type="text" name="name" class="form-control" required
+                 placeholder="Ej: Energía eléctrica producción">
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Monto mensual (S/) <span class="required">*</span></label>
+            <input type="number" name="monthly_amount" class="form-control"
+                   step="0.01" min="0" value="0" required
+                   oninput="document.getElementById('annual-preview').textContent = 'S/ ' + (parseFloat(this.value||0)*12).toLocaleString('es-PE',{minimumFractionDigits:2})">
+            <span class="form-hint">Monto anual: <span id="annual-preview">S/ 0.00</span></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo de inductor
+              <span class="help-btn"
+                data-help="El inductor es la base para distribuir el recurso a los centros de actividad. Ej: Energía → Kw-h consumidos; Personal → horas trabajadas; Depreciación → horas máquina."
+                data-help-title="Tipo de inductor">?</span>
+            </label>
+            <select name="driver_type" class="form-control">
+              <option value="">Sin inductor definido</option>
+              {% for v, l in [('kwh','Kw-h consumidos'),('horas_hombre','Horas hombre'),('horas_maquina','Horas máquina'),('m2','Metros cuadrados'),('m3','M³ consumidos'),('unidades','Unidades'),('porcentaje','Porcentaje directo'),('otro','Otro')] %}
+                <option value="{{ v }}">{{ l }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <textarea name="notes" class="form-control" rows="2"
+                    placeholder="Fuente del dato, estimación, observaciones..."></textarea>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button type="submit" class="btn btn-primary">
+            <i class="ti ti-device-floppy"></i> Guardar recurso
+          </button>
+          <a href="{{ url_for('resources.index') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

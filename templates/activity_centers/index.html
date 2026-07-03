@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Centros de Actividad{% endblock %}
+{% block breadcrumb %}Centros de Actividad{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Centros de Actividad</h1>
+    <p class="page-subtitle">Nivel 2 del ABC — agrupan actividades por tipo de proceso</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-ghost btn-sm"
+            onclick="showHelpModal('Centros de Actividad',
+              'Un centro de actividad es un grupo lógico de actividades relacionadas. Pueden ser estratégicos (gerencia), operativos (producción) o de apoyo (RRHH, contabilidad). Los recursos se distribuyen primero a estos centros usando inductores como horas, m², etc.')">
+      <i class="ti ti-help-circle"></i> Ayuda
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('activity_centers')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+    <a href="{{ url_for('activity_centers.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Nuevo centro
+    </a>
+  </div>
+</div>
+
+<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+  <div class="kpi-card"><div class="kpi-label">Total centros</div><div class="kpi-value orange">{{ centers|length }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">Costo total/mes</div><div class="kpi-value">{{ total | currency }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">Actividades totales</div><div class="kpi-value">{{ centers|sum(attribute='activity_count') }}</div></div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-layout-grid" style="color:var(--primary)"></i> Centros de actividad</span>
+  </div>
+  {% if centers %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Código</th><th>Nombre</th><th>Tipo</th><th class="number">Actividades</th><th class="number">Costo mensual</th><th class="actions">Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for c in centers %}
+        <tr>
+          <td><span class="badge badge-neutral">{{ c.code }}</span></td>
+          <td style="font-weight:500">{{ c.name }}</td>
+          <td><span class="badge {{ 'badge-success' if c.center_type=='operativo' else ('badge-info' if c.center_type=='apoyo' else 'badge-warning') }}">{{ c.center_type }}</span></td>
+          <td class="number">{{ c.activity_count }}</td>
+          <td class="number">{{ c.total_cost_monthly | currency }}</td>
+          <td class="actions">
+            <a href="{{ url_for('activity_centers.edit', cid=c.id) }}" class="btn btn-ghost btn-sm btn-icon"><i class="ti ti-edit"></i></a>
+            <form method="POST" action="{{ url_for('activity_centers.delete', cid=c.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar este centro?"><i class="ti ti-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="ti ti-layout-grid"></i>
+    <h3>Sin centros de actividad</h3>
+    <p>Crea los centros antes de definir actividades y modelos ABC.</p>
+    <a href="{{ url_for('activity_centers.new') }}" class="btn btn-primary"><i class="ti ti-plus"></i> Crear primer centro</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

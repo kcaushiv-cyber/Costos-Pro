@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo Producto/Servicio{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('products.index') }}">Productos</a> / Nuevo{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Nuevo Producto / Servicio</h1>
+    <p class="page-subtitle">Agrega un producto, servicio, semielaborado o materia prima al catálogo</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('products.index') }}" class="btn btn-secondary">
+      <i class="ti ti-arrow-left"></i> Volver
+    </a>
+  </div>
+</div>
+
+<div style="max-width:640px">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-package" style="color:var(--primary)"></i> Datos del producto</span>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('products.new') }}">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Código <span class="required">*</span></label>
+            <input type="text" name="code" class="form-control" required
+                   placeholder="PROD001" maxlength="30">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Categoría <span class="required">*</span></label>
+            <select name="category" class="form-control" required>
+              {% for v,l in [('producto','Producto terminado'),('servicio','Servicio'),('semielaborado','Semielaborado'),('materia_prima','Materia Prima')] %}
+                <option value="{{ v }}">{{ l }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombre <span class="required">*</span></label>
+          <input type="text" name="name" class="form-control" required
+                 placeholder="Nombre descriptivo del producto o servicio">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <textarea name="description" class="form-control" rows="2"
+                    placeholder="Descripción opcional..."></textarea>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Unidad de medida</label>
+            <select name="unit_id" class="form-control">
+              <option value="">Sin unidad</option>
+              {% for u in units %}
+                <option value="{{ u.id }}">{{ u.name }} ({{ u.code }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <div style="display:flex;align-items:center;gap:8px;padding-top:30px">
+              <a href="{{ url_for('products.units') }}" class="btn btn-ghost btn-sm">
+                <i class="ti ti-plus"></i> Nueva unidad
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Precio de venta (S/)
+              <span class="help-btn"
+                data-help="Precio de venta sin IGV. Si aún no lo sabes, puedes dejarlo en 0 y actualizarlo después."
+                data-help-title="Precio de venta">?</span>
+            </label>
+            <input type="number" name="sale_price" class="form-control"
+                   step="0.01" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Costo estándar (S/)
+              <span class="help-btn"
+                data-help="Costo de producción o adquisición estimado. Se actualiza automáticamente cuando calculas costos en los módulos ABC o Proceso."
+                data-help-title="Costo estándar">?</span>
+            </label>
+            <input type="number" name="standard_cost" class="form-control"
+                   step="0.01" min="0" value="0">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button type="submit" class="btn btn-primary">
+            <i class="ti ti-device-floppy"></i> Guardar
+          </button>
+          <a href="{{ url_for('products.index') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

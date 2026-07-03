@@ -1,0 +1,348 @@
+{% extends 'base.html' %}
+{% block title %}Punto de Equilibrio{% endblock %}
+{% block breadcrumb %}Punto de Equilibrio{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Punto de Equilibrio</h1>
+    <p class="page-subtitle">{{ current_company }} · {{ current_period }} — calculado desde datos registrados</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-primary" id="btn-narrative" onclick="getNarrative()">
+      <i class="ti ti-robot"></i> Analizar con IA
+    </button>
+  </div>
+</div>
+
+<!-- Tabs General / Por Producto -->
+<div style="display:flex;gap:8px;margin-bottom:20px">
+  <button id="tab-general" class="btn btn-primary btn-sm" onclick="showPETab('general')">
+    <i class="ti ti-chart-line"></i> PE General (empresa)
+  </button>
+  <button id="tab-producto" class="btn btn-secondary btn-sm" onclick="showPETab('producto')">
+    <i class="ti ti-package"></i> PE por Producto
+  </button>
+</div>
+
+<!-- Selector por producto (oculto por defecto) -->
+<div id="pe-producto-panel" style="display:none;margin-bottom:20px">
+  <div class="card">
+    <div class="card-body" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <select id="pe-product-select" class="form-control" style="max-width:300px">
+        <option value="">Seleccionar objeto de costo...</option>
+        {% for obj in cost_objects %}
+        <option value="{{ obj.id }}">{{ obj.code }} — {{ obj.name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="calcPEProducto()">
+        <i class="ti ti-calculator"></i> Calcular PE
+      </button>
+    </div>
+    <div id="pe-producto-result" style="display:none;padding:0 20px 16px"></div>
+  </div>
+</div>
+
+<div id="pe-general-panel">
+{% if not data.abc_calculado %}
+<div class="alert alert-warning" style="margin-bottom:20px">
+  <i class="ti ti-alert-triangle"></i>
+  <strong>Falta calcular el ABC.</strong>
+  El punto de equilibrio usa la fórmula correcta, pero el costo variable unitario debe salir del costo unitario ABC. Calcula el ABC para que la recta de costos sea: Costos fijos + Costo ABC unitario × unidades.
+</div>
+{% endif %}
+<!-- KPIs principales -->
+<div class="kpi-grid" style="margin-bottom:24px">
+  <div class="kpi-card {{ 'success' if data.en_equilibrio else 'danger' }}">
+    <i class="ti ti-scale kpi-icon"></i>
+    <div class="kpi-label">Punto de Equilibrio</div>
+    <div class="kpi-value orange">{{ data.pe_unidades | int }} uds</div>
+    <div class="kpi-sub">{{ data.pe_soles | currency }}</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-trending-up kpi-icon"></i>
+    <div class="kpi-label">Producción actual</div>
+    <div class="kpi-value">{{ data.unidades_producidas | int }} uds</div>
+    <div class="kpi-sub">{{ data.ventas_actuales | currency }}</div>
+  </div>
+  <div class="kpi-card {{ 'success' if data.margen_seguridad_pct > 20 else 'warning' if data.margen_seguridad_pct > 0 else 'danger' }}">
+    <i class="ti ti-shield kpi-icon"></i>
+    <div class="kpi-label">Margen de seguridad</div>
+    <div class="kpi-value">{{ data.margen_seguridad_pct }}%</div>
+    <div class="kpi-sub">{{ data.margen_seguridad_uds | int }} uds sobre el PE</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-percentage kpi-icon"></i>
+    <div class="kpi-label">Margen contribución</div>
+    <div class="kpi-value">{{ data.mcv_pct }}%</div>
+    <div class="kpi-sub">S/ {{ data.mcv }} por unidad</div>
+  </div>
+</div>
+
+<!-- Estado general -->
+<div class="alert alert-{{ 'success' if data.en_equilibrio else 'error' }}" style="margin-bottom:24px">
+  <i class="ti ti-{{ 'check' if data.en_equilibrio else 'alert-circle' }}"></i>
+  {% if data.en_equilibrio %}
+    <strong>Por encima del punto de equilibrio.</strong>
+    Producción actual supera el PE por {{ (data.unidades_producidas - data.pe_unidades) | int }} unidades.
+    Margen de seguridad: {{ data.margen_seguridad_pct }}%
+  {% else %}
+    <strong>Por debajo del punto de equilibrio.</strong>
+    Necesitas producir {{ (data.pe_unidades - data.unidades_producidas) | int }} unidades adicionales para cubrir todos los costos.
+  {% endif %}
+</div>
+
+<div class="grid-2" style="align-items:start">
+
+  <!-- Desglose de costos -->
+  <div>
+    <div class="card mb-2" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title"><i class="ti ti-lock" style="color:var(--primary)"></i> Costos Fijos Mensuales</span></div>
+      <div class="table-wrap">
+        <table class="table" style="font-size:13px">
+          <tbody>
+            <tr><td>Personal Admin + MOI</td><td class="number">{{ data.costos_fijos.personal_admin_moi | currency }}</td></tr>
+            <tr><td>Recursos fijos (deprec., seguros)</td><td class="number">{{ data.costos_fijos.recursos_fijos | currency }}</td></tr>
+            <tr><td>CIF fijos presupuestados</td><td class="number">{{ data.costos_fijos.cif_fijo | currency }}</td></tr>
+            <tr><td>Servicio de deuda</td><td class="number">{{ data.costos_fijos.deuda | currency }}</td></tr>
+            <tr style="background:var(--primary);color:#fff;font-weight:700">
+              <td>TOTAL COSTOS FIJOS</td>
+              <td class="number">{{ data.costos_fijos.total | currency }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mb-2" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title"><i class="ti ti-arrows-up-down" style="color:var(--primary)"></i> Costos Variables Unitarios</span></div>
+      <div class="table-wrap">
+        <table class="table" style="font-size:13px">
+          <tbody>
+            {% if data.abc_calculado %}
+            <tr><td>Costo variable unitario usado</td><td class="number"><strong>{{ data.cvu | currency }}</strong></td></tr>
+            <tr><td>Fuente</td><td class="number">Costo unitario ABC</td></tr>
+            <tr><td>Costo ABC total del período</td><td class="number">{{ data.costos_variables.abc_total | currency }}</td></tr>
+            {% else %}
+            <tr><td>Mano de Obra Directa (MOD)</td><td class="number">{{ data.costos_variables.mod | currency }}</td></tr>
+            <tr><td>Materia Prima (valorizado)</td><td class="number">{{ data.costos_variables.materia_prima | currency }}</td></tr>
+            <tr><td>CIF variables</td><td class="number">{{ data.costos_variables.cif_variable | currency }}</td></tr>
+            {% endif %}
+            <tr style="background:var(--bg-secondary);font-weight:600">
+              <td>TOTAL COSTOS VARIABLES</td>
+              <td class="number">{{ data.costos_variables.total | currency }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Fórmula -->
+    <div class="card">
+      <div class="card-header"><span class="card-title"><i class="ti ti-math" style="color:var(--primary)"></i> Fórmula aplicada</span></div>
+      <div class="card-body" style="font-size:13px">
+        <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-family:monospace;font-size:12.5px;line-height:2">
+          Ingresos(x) = Precio venta unit. × x<br>
+          Ingresos(x) = {{ data.precio_unitario }} × x<br><br>
+          Costos Totales(x) = Costos Fijos + CVU × x<br>
+          Costos Totales(x) = {{ data.costos_fijos.total | currency }} + {{ data.cvu }} × x<br><br>
+          MCU = Precio venta unit. − CVU<br>
+          MCU = {{ data.precio_unitario }} − {{ data.cvu }} = <strong>{{ data.mcv }}</strong><br><br>
+          PE (uds) = Costos Fijos / MCU<br>
+          PE (uds) = {{ data.costos_fijos.total | currency }} / {{ data.mcv }} = <strong>{{ data.pe_unidades | int }} uds</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gráfico -->
+  <div>
+    <div class="card mb-2" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title"><i class="ti ti-chart-line" style="color:var(--primary)"></i> Gráfico de punto de equilibrio</span></div>
+      <div class="card-body"><canvas id="chart-pe" height="280"></canvas></div>
+    </div>
+
+    <!-- Narrativa IA -->
+    <div id="narrative-card" class="card" style="display:none">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-robot" style="color:var(--primary)"></i> Análisis IA</span>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('narrative-card').style.display='none'">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+      <div class="card-body">
+        <div id="narrative-text" class="md-content" style="font-size:13px;line-height:1.7"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div> <!-- pe-general-panel -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CF  = {{ data.costos_fijos.total | tojson }};
+const CVU = {{ data.cvu | tojson }};
+const PU  = {{ data.precio_unitario | tojson }};
+const PE  = {{ data.pe_unidades | tojson }};
+const PROD= {{ data.unidades_producidas | tojson }};
+
+// Gráfico correcto:
+// Ingresos(x) = PU*x
+// Costos Totales(x) = CF + CVU*x
+const maxX = Math.max(PE * 1.35, PROD * 1.15, 10);
+const points = 24;
+const ingresos = [], costos = [];
+for (let i = 0; i <= points; i++) {
+  const x = +(maxX * i / points).toFixed(2);
+  ingresos.push({ x, y: +(x * PU).toFixed(2) });
+  costos.push({ x, y: +(CF + x * CVU).toFixed(2) });
+}
+
+const peLinePlugin = {
+  id: 'peLinePlugin',
+  afterDraw(chart) {
+    if (!PE || PE <= 0) return;
+    const { ctx, chartArea, scales } = chart;
+    const xPE = scales.x.getPixelForValue(PE);
+    if (xPE < chartArea.left || xPE > chartArea.right) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = '#F97316';
+    ctx.lineWidth = 1.5;
+    ctx.moveTo(xPE, chartArea.top);
+    ctx.lineTo(xPE, chartArea.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#F97316';
+    ctx.font = '11px Inter, sans-serif';
+    ctx.fillText(`PE: ${Math.round(PE)} uds`, xPE + 6, chartArea.top + 16);
+    ctx.restore();
+  }
+};
+
+new Chart(document.getElementById('chart-pe'), {
+  type: 'line',
+  data: {
+    datasets: [
+      {
+        label: 'Ingresos = unidades × precio de venta',
+        data: ingresos,
+        borderColor: '#22C55E', backgroundColor: 'rgba(34,197,94,0.08)',
+        borderWidth: 2, fill: false, tension: 0,
+      },
+      {
+        label: 'Costos Totales = CF + CVU × unidades',
+        data: costos,
+        borderColor: '#DC2626', backgroundColor: 'rgba(220,38,38,0.08)',
+        borderWidth: 2, fill: false, tension: 0,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    parsing: false,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: { callbacks: {
+        title: items => `${(+items[0].parsed.x).toLocaleString('es-PE')} unidades`,
+        label: ctx => ` ${ctx.dataset.label}: S/ ${ctx.parsed.y.toLocaleString('es-PE',{minimumFractionDigits:2})}`
+      }}
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        min: 0,
+        title: { display: true, text: 'Unidades producidas' },
+        ticks: { precision: 0 }
+      },
+      y: { ticks: { callback: v => 'S/ ' + v.toLocaleString('es-PE') } }
+    }
+  },
+  plugins: [peLinePlugin]
+});
+
+function showPETab(tab) {
+  const isGeneral = tab === 'general';
+  document.getElementById('pe-general-panel').style.display = isGeneral ? 'block' : 'none';
+  document.getElementById('pe-producto-panel').style.display = isGeneral ? 'none' : 'block';
+  document.getElementById('tab-general').className = `btn ${isGeneral ? 'btn-primary' : 'btn-secondary'} btn-sm`;
+  document.getElementById('tab-producto').className = `btn ${!isGeneral ? 'btn-primary' : 'btn-secondary'} btn-sm`;
+}
+
+async function calcPEProducto() {
+  const sel = document.getElementById('pe-product-select');
+  const id  = sel.value;
+  if (!id) { showToast('Selecciona un producto', 'warning'); return; }
+
+  const res  = await fetch(`/breakeven/product/${id}`);
+  const data = await res.json();
+  const div  = document.getElementById('pe-producto-result');
+  div.style.display = 'block';
+
+  if (data.success) {
+    const d = data.data;
+    div.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:12px">
+        <div class="kpi-card ${d.en_equilibrio ? 'success' : 'danger'}">
+          <div class="kpi-label">PE — ${d.producto}</div>
+          <div class="kpi-value orange">${d.pe_unidades} uds</div>
+          <div class="kpi-sub">S/ ${(+d.pe_soles).toLocaleString('es-PE',{minimumFractionDigits:2})}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Precio venta unit.</div>
+          <div class="kpi-value">S/ ${d.precio_unitario}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Costo unit. ABC</div>
+          <div class="kpi-value">S/ ${d.cu_variable}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">MCU</div>
+          <div class="kpi-value">S/ ${d.mcv} (${d.mcv_pct}%)</div>
+        </div>
+        <div class="kpi-card ${d.margen_seguridad_pct > 0 ? 'success' : 'danger'}">
+          <div class="kpi-label">Margen seguridad</div>
+          <div class="kpi-value">${d.margen_seguridad_pct}%</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;background:var(--bg-secondary);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;line-height:1.8">
+        Ingresos(x) = ${d.precio_unitario} × x<br>
+        Costos Totales(x) = S/ ${(+d.costo_fijo_total).toLocaleString('es-PE',{minimumFractionDigits:2})} + ${d.cu_variable} × x<br>
+        PE = Costos Fijos / (Precio venta unit. − Costo ABC unit.)
+      </div>
+    `;
+  } else {
+    div.innerHTML = `<p style="color:var(--danger)">${data.error}</p>`;
+  }
+}
+
+async function getNarrative() {
+  const btn = document.getElementById('btn-narrative');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Analizando...';
+
+  const card = document.getElementById('narrative-card');
+  const text = document.getElementById('narrative-text');
+  card.style.display = 'block';
+  text.innerHTML = '<em>El agente está analizando el punto de equilibrio...</em>';
+
+  const res  = await fetch('/breakeven/api/narrative');
+  const data = await res.json();
+  if (data.success) {
+    // Usar el renderer del chatbox si está disponible
+    text.innerHTML = (window.renderMarkdown || (t => t.replace(/\n/g,"<br>")))(data.response);
+  } else {
+    text.innerHTML = `<span style="color:var(--danger)">${data.error}</span>`;
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-robot"></i> Analizar con IA';
+}
+</script>
+{% endblock %}

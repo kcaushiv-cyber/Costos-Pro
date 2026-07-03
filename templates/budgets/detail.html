@@ -1,0 +1,432 @@
+{% extends 'base.html' %}
+{% block title %}{{ budget.name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('budgets.index') }}">Presupuestos</a> / {{ budget.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.budget-tabs { display:flex; gap:4px; margin-bottom:20px; flex-wrap:wrap; }
+.btab { padding:8px 16px; border-radius:var(--radius-md); font-size:13px; font-weight:500; cursor:pointer; background:var(--bg-secondary); border:1px solid var(--border); color:var(--text-secondary); text-decoration:none; }
+.btab.active, .btab:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
+.budget-section { display:none; }
+.budget-section.active { display:block; }
+.month-select { width:90px; }
+.summary-bar { display:flex; gap:16px; flex-wrap:wrap; padding:14px; background:var(--bg-secondary); border-radius:var(--radius-md); margin-bottom:20px; }
+.summary-item { text-align:center; flex:1; min-width:100px; }
+.summary-item .val { font-size:18px; font-weight:700; }
+.summary-item .lbl { font-size:11px; color:var(--text-secondary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ budget.name }}</h1>
+    <p class="page-subtitle">{{ current_period }} · {{ current_company }}</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-secondary btn-sm" onclick="genCashflow()">
+      <i class="ti ti-refresh"></i> Recalcular flujo de caja
+    </button>
+    <button class="btn btn-ghost btn-sm"
+            onclick="CostosChatbox.sendQuick('Analiza el presupuesto: ventas S/ {{ summary.total_sales }}, costo S/ {{ summary.total_cost }}, utilidad S/ {{ summary.gross_profit }}. ¿Qué me recomendas?', 'presupuestos')">
+      <i class="ti ti-robot"></i> Analizar con IA
+    </button>
+    <form method="POST" action="{{ url_for('budgets.delete', bid=budget.id) }}" style="display:inline">
+      <button type="submit" class="btn btn-ghost btn-sm" data-confirm="¿Eliminar este presupuesto?">
+        <i class="ti ti-trash"></i>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Resumen KPIs -->
+<div class="summary-bar">
+  <div class="summary-item">
+    <div class="val" style="color:var(--primary)">{{ summary.total_sales | currency }}</div>
+    <div class="lbl">Ventas totales</div>
+  </div>
+  <div class="summary-item">
+    <div class="val">{{ summary.total_cost | currency }}</div>
+    <div class="lbl">Costo (MOD + CIF)</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color:{{ 'var(--success)' if summary.gross_profit > 0 else 'var(--danger)' }}">
+      {{ summary.gross_profit | currency }}
+    </div>
+    <div class="lbl">Utilidad bruta</div>
+  </div>
+  <div class="summary-item">
+    <div class="val">{{ summary.margin_pct }}%</div>
+    <div class="lbl">Margen bruto</div>
+  </div>
+  <div class="summary-item">
+    <div class="val">{{ summary.total_prod_units | int }}</div>
+    <div class="lbl">Unidades prod.</div>
+  </div>
+</div>
+
+<!-- Tabs de navegación -->
+<div class="budget-tabs">
+  {% for tid, tlabel in [('ventas','Ventas'),('produccion','Producción'),('labor','MOD'),('cif','CIF'),('deuda','Deuda'),('flujo','Flujo de Caja')] %}
+  <a class="btab {% if loop.first %}active{% endif %}" href="#{{ tid }}" onclick="showTab('{{ tid }}')">
+    {{ tlabel }}
+  </a>
+  {% endfor %}
+</div>
+
+<!-- ── 1. VENTAS ─────────────────────────────────────────────────────── -->
+<div id="ventas" class="budget-section active">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-trending-up" style="color:var(--primary)"></i> Presupuesto de Ventas</span>
+    </div>
+    {% if sales %}
+    <div class="table-wrap">
+      <table class="table" style="font-size:13px">
+        <thead><tr><th>Producto</th><th>Mes</th><th class="number">Cantidad</th><th class="number">Precio</th><th class="number">Total</th><th></th></tr></thead>
+        <tbody>
+          {% for s in sales %}
+          <tr>
+            <td>{{ s.product_name }}</td>
+            <td>{{ ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][s.month] }}</td>
+            <td class="number">{{ s.quantity }}</td>
+            <td class="number">{{ s.unit_price | currency }}</td>
+            <td class="number"><strong>{{ s.total_sales | currency }}</strong></td>
+            <td>
+              <form method="POST" action="{{ url_for('budgets.delete_sale', bid=budget.id, sid=s.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar?"><i class="ti ti-x"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--primary);color:#fff;font-weight:700">
+            <td colspan="4">Total ventas</td>
+            <td class="number">{{ summary.total_sales | currency }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% endif %}
+    <div class="card-footer">
+      <form method="POST" action="{{ url_for('budgets.add_sale', bid=budget.id) }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group mb-0">
+          <label class="form-label">Producto</label>
+          <select name="product_id" class="form-control" style="width:180px"
+                  onchange="this.form.product_name.value = this.options[this.selectedIndex].text.split('—')[1]?.trim() || ''">
+            <option value="">Seleccionar...</option>
+            {% for p in products %}<option value="{{ p.id }}">{{ p.code }} — {{ p.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <input type="hidden" name="product_name" value="">
+        <div class="form-group mb-0"><label class="form-label">Mes</label>
+          <select name="month" class="form-control month-select">
+            {% for m in months %}<option value="{{ m }}">{{ ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][m] }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group mb-0"><label class="form-label">Cantidad</label><input type="number" name="quantity" class="form-control" style="width:90px" step="0.001" min="0" value="0"></div>
+        <div class="form-group mb-0"><label class="form-label">Precio unit. (S/)</label><input type="number" name="unit_price" class="form-control" style="width:100px" step="0.01" min="0" value="0"></div>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-plus"></i> Agregar</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── 2. PRODUCCIÓN ──────────────────────────────────────────────────── -->
+<div id="produccion" class="budget-section">
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="ti ti-tool" style="color:var(--primary)"></i> Presupuesto de Producción</span></div>
+    {% if prod %}
+    <div class="table-wrap">
+      <table class="table" style="font-size:13px">
+        <thead><tr><th>Producto</th><th>Mes</th><th class="number">Ventas</th><th class="number">Inv. Final</th><th class="number">Inv. Inicial</th><th class="number">Prod. Requerida</th><th></th></tr></thead>
+        <tbody>
+          {% for p in prod %}
+          <tr>
+            <td>{{ p.product_name }}</td>
+            <td>{{ ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][p.month] }}</td>
+            <td class="number">{{ p.sales_units }}</td>
+            <td class="number">{{ p.ending_inventory }}</td>
+            <td class="number">{{ p.beginning_inventory }}</td>
+            <td class="number"><strong>{{ p.required_production }}</strong></td>
+            <td>
+              <form method="POST" action="{{ url_for('budgets.delete_production', bid=budget.id, pid=p.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar?"><i class="ti ti-x"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    <div class="card-footer">
+      <form method="POST" action="{{ url_for('budgets.add_production', bid=budget.id) }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group mb-0"><label class="form-label">Producto</label>
+          <select name="product_id" class="form-control" style="width:180px"
+                  onchange="this.form.product_name.value = this.options[this.selectedIndex].text.split('—')[1]?.trim() || ''">
+            <option value="">Seleccionar...</option>
+            {% for p in products %}<option value="{{ p.id }}">{{ p.code }} — {{ p.name }}</option>{% endfor %}
+          </select>
+          <input type="hidden" name="product_name" value="">
+        </div>
+        <div class="form-group mb-0"><label class="form-label">Mes</label>
+          <select name="month" class="form-control month-select">
+            {% for m in months %}<option value="{{ m }}">{{ ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][m] }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group mb-0"><label class="form-label">Ventas (uds)</label><input type="number" name="sales_units" class="form-control" style="width:90px" step="0.001" min="0" value="0"></div>
+        <div class="form-group mb-0"><label class="form-label">Inv. final</label><input type="number" name="ending_inventory" class="form-control" style="width:80px" step="0.001" min="0" value="0"></div>
+        <div class="form-group mb-0"><label class="form-label">Inv. inicial</label><input type="number" name="beginning_inventory" class="form-control" style="width:80px" step="0.001" min="0" value="0"></div>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-plus"></i> Calcular</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── 3. MOD ──────────────────────────────────────────────────────────── -->
+<div id="labor" class="budget-section">
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="ti ti-users" style="color:var(--primary)"></i> Mano de Obra Directa (MOD)</span></div>
+    {% if labor %}
+    <div class="table-wrap">
+      <table class="table" style="font-size:13px">
+        <thead><tr><th>Cargo</th><th>Tipo</th><th>Mes</th><th class="number">Horas</th><th class="number">S/./hora</th><th class="number">Total</th><th></th></tr></thead>
+        <tbody>
+          {% for l in labor %}
+          <tr>
+            <td>{{ l.position_name }}</td>
+            <td><span class="badge badge-{{ 'success' if l.labor_type=='MOD' else 'neutral' }}">{{ l.labor_type }}</span></td>
+            <td>{{ ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][l.month] }}</td>
+            <td class="number">{{ l.hours_required }}</td>
+            <td class="number">{{ l.cost_per_hour | currency }}</td>
+            <td class="number"><strong>{{ l.total_cost | currency }}</strong></td>
+            <td>
+              <form method="POST" action="{{ url_for('budgets.delete_labor', bid=budget.id, lid=l.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar?"><i class="ti ti-x"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--primary);color:#fff;font-weight:700">
+            <td colspan="5">Total MOD</td>
+            <td class="number">{{ summary.total_labor | currency }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% endif %}
+    <div class="card-footer">
+      <form method="POST" action="{{ url_for('budgets.add_labor', bid=budget.id) }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group mb-0"><label class="form-label">Empleado / cargo</label>
+          <select name="employee_id" class="form-control" style="width:180px"
+                  onchange="fillLabor(this)">
+            <option value="">Manual...</option>
+            {% for e in employees %}<option value="{{ e.id }}" data-rate="{{ e.cost_per_hour }}" data-type="{{ e.labor_type }}">{{ e.full_name }}</option>{% endfor %}
+          </select>
+        </div>
+        <input type="hidden" id="inp-position" name="position_name" value="MOD presupuestado">
+        <div class="form-group mb-0"><label class="form-label">Tipo</label>
+          <select id="inp-labor-type" name="labor_type" class="form-control" style="width:90px">
+            <option value="MOD">MOD</option><option value="MOI">MOI</option>
+          </select>
+        </div>
+        <div class="form-group mb-0"><label class="form-label">Mes</label>
+          <select name="month" class="form-control month-select">
+            {% for m in months %}<option value="{{ m }}">{{ ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][m] }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group mb-0"><label class="form-label">Horas</label><input type="number" name="hours_required" class="form-control" style="width:80px" step="0.5" min="0" value="0"></div>
+        <div class="form-group mb-0"><label class="form-label">S/./hora</label><input type="number" id="inp-rate" name="cost_per_hour" class="form-control" style="width:90px" step="0.0001" min="0" value="0"></div>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-plus"></i> Agregar</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── 4. CIF ──────────────────────────────────────────────────────────── -->
+<div id="cif" class="budget-section">
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="ti ti-layers" style="color:var(--primary)"></i> Costos Indirectos de Fabricación (CIF)</span></div>
+    {% if cif %}
+    <div class="table-wrap">
+      <table class="table" style="font-size:13px">
+        <thead><tr><th>Concepto</th><th>Tipo</th><th>Mes</th><th class="number">Monto</th><th></th></tr></thead>
+        <tbody>
+          {% for c in cif %}
+          <tr>
+            <td>{{ c.concept }}</td>
+            <td><span class="badge {{ 'badge-warning' if c.cif_type=='variable' else 'badge-neutral' }}">{{ c.cif_type }}</span></td>
+            <td>{{ ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][c.month] }}</td>
+            <td class="number"><strong>{{ c.amount | currency }}</strong></td>
+            <td>
+              <form method="POST" action="{{ url_for('budgets.delete_cif', bid=budget.id, cid=c.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar?"><i class="ti ti-x"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--primary);color:#fff;font-weight:700">
+            <td colspan="3">Total CIF</td><td class="number">{{ summary.total_cif | currency }}</td><td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% endif %}
+    <div class="card-footer">
+      <form method="POST" action="{{ url_for('budgets.add_cif', bid=budget.id) }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group mb-0"><label class="form-label">Concepto</label><input type="text" name="concept" class="form-control" style="width:200px" placeholder="Energía, Depreciación..."></div>
+        <div class="form-group mb-0"><label class="form-label">Tipo</label>
+          <select name="cif_type" class="form-control" style="width:100px"><option value="fijo">Fijo</option><option value="variable">Variable</option></select>
+        </div>
+        <div class="form-group mb-0"><label class="form-label">Mes</label>
+          <select name="month" class="form-control month-select">
+            {% for m in months %}<option value="{{ m }}">{{ ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][m] }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group mb-0"><label class="form-label">Monto (S/)</label><input type="number" name="amount" class="form-control" style="width:100px" step="0.01" min="0" value="0"></div>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-plus"></i> Agregar</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── 5. DEUDA ───────────────────────────────────────────────────────── -->
+<div id="deuda" class="budget-section">
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="ti ti-building-bank" style="color:var(--primary)"></i> Servicio de Deuda e Inversión</span></div>
+    {% if debt %}
+    <div class="table-wrap">
+      <table class="table" style="font-size:12.5px">
+        <thead><tr><th>Concepto</th><th>Mes</th><th class="number">Principal</th><th class="number">Interés</th><th class="number">Cuota</th><th class="number">Saldo</th><th></th></tr></thead>
+        <tbody>
+          {% set ns = namespace(last_concept='') %}
+          {% for d in debt %}
+          <tr>
+            <td>{% if d.concept != ns.last_concept %}{{ d.concept }}{% set ns.last_concept = d.concept %}{% endif %}</td>
+            <td>{{ d.month }}</td>
+            <td class="number">{{ d.principal | currency }}</td>
+            <td class="number">{{ d.interest | currency }}</td>
+            <td class="number"><strong>{{ d.fee | currency }}</strong></td>
+            <td class="number">{{ d.balance | currency }}</td>
+            <td>{% if loop.first or d.concept != loop.previtem.concept %}<form method="POST" action="{{ url_for('budgets.delete_debt', bid=budget.id, concept=d.concept) }}" style="display:inline"><button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar toda la tabla de {{ d.concept }}?"><i class="ti ti-trash"></i></button></form>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    <div class="card-footer">
+      <form method="POST" action="{{ url_for('budgets.add_debt', bid=budget.id) }}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group mb-0"><label class="form-label">Concepto</label><input type="text" name="concept" class="form-control" style="width:180px" placeholder="Préstamo BCP"></div>
+        <div class="form-group mb-0"><label class="form-label">Monto (S/)</label><input type="number" name="loan_amount" class="form-control" style="width:110px" step="0.01" min="0" value="0"></div>
+        <div class="form-group mb-0"><label class="form-label">TEA (%)</label><input type="number" name="annual_rate" class="form-control" style="width:80px" step="0.01" min="0" value="12" placeholder="12"></div>
+        <div class="form-group mb-0"><label class="form-label">Meses</label><input type="number" name="months" class="form-control" style="width:70px" step="1" min="1" max="120" value="12"></div>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-calculator"></i> Calcular tabla</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── 6. FLUJO DE CAJA ───────────────────────────────────────────────── -->
+<div id="flujo" class="budget-section">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="ti ti-trending-up" style="color:var(--primary)"></i> Flujo de Caja Mensual</span>
+      <button class="btn btn-primary btn-sm" onclick="genCashflow()">
+        <i class="ti ti-refresh"></i> Generar / Actualizar
+      </button>
+    </div>
+    {% if cashflow %}
+    <div class="table-wrap">
+      <table class="table" style="font-size:12.5px">
+        <thead>
+          <tr>
+            <th>Mes</th>
+            <th class="number">Ingresos</th>
+            <th class="number">MOD</th>
+            <th class="number">CIF</th>
+            <th class="number">Deuda</th>
+            <th class="number">Total egresos</th>
+            <th class="number">Flujo neto</th>
+            <th class="number">Saldo inicio</th>
+            <th class="number">Saldo final</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cf in cashflow %}
+          <tr style="{% if cf.ending_balance < 0 %}background:var(--danger-bg){% elif cf.net_cashflow > 0 %}background:var(--success-bg){% endif %}">
+            <td>{{ ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][cf.month] }}</td>
+            <td class="number">{{ cf.total_income | currency }}</td>
+            <td class="number">{{ cf.labor | currency }}</td>
+            <td class="number">{{ cf.cif_cash | currency }}</td>
+            <td class="number">{{ cf.loan_principal | currency }}</td>
+            <td class="number">{{ cf.total_outflow | currency }}</td>
+            <td class="number" style="font-weight:600;color:{{ 'var(--success)' if cf.net_cashflow >= 0 else 'var(--danger)' }}">
+              {{ cf.net_cashflow | currency }}
+            </td>
+            <td class="number">{{ cf.beginning_balance | currency }}</td>
+            <td class="number" style="font-weight:700;color:{{ 'var(--success)' if cf.ending_balance >= 0 else 'var(--danger)' }}">
+              {{ cf.ending_balance | currency }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:40px">
+      <i class="ti ti-trending-up"></i>
+      <p>Haz clic en "Generar / Actualizar" para calcular el flujo de caja mensual.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const BID = {{ budget.id }};
+
+function showTab(id) {
+  document.querySelectorAll('.budget-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.btab').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.btab').forEach(b => {
+    if (b.getAttribute('href') === '#' + id) b.classList.add('active');
+  });
+  history.replaceState(null, '', '#' + id);
+}
+
+// Restaurar tab desde URL hash
+window.addEventListener('load', () => {
+  const hash = location.hash.slice(1);
+  if (hash && document.getElementById(hash)) showTab(hash);
+});
+
+function fillLabor(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('inp-rate').value = opt.dataset.rate || 0;
+  document.getElementById('inp-labor-type').value = opt.dataset.type || 'MOD';
+  document.getElementById('inp-position').value = opt.text || '';
+}
+
+async function genCashflow() {
+  const res  = await fetch(`/budgets/${BID}/cashflow/generate`, { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    showToast(`Flujo de caja generado (${data.months} meses)`, 'success');
+    setTimeout(() => { showTab('flujo'); location.href = data.redirect; }, 600);
+  } else {
+    showToast('Error al generar flujo', 'error');
+  }
+}
+</script>
+{% endblock %}

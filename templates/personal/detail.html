@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}{{ employee.full_name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('personal.index') }}">Personal</a> / {{ employee.full_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ employee.full_name }}</h1>
+    <p class="page-subtitle">
+      {{ employee.code }}
+      {% if employee.dni %} · DNI {{ employee.dni }}{% endif %}
+      · {{ employee.dept_name or 'Sin departamento' }}
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('personal.edit', eid=employee.id) }}" class="btn btn-primary">
+      <i class="ti ti-edit"></i> Editar
+    </a>
+    <form method="POST" action="{{ url_for('personal.toggle_active', eid=employee.id) }}" style="display:inline">
+      <button type="submit" class="btn btn-secondary"
+              data-confirm="{{ '¿Desactivar este trabajador?' if employee.is_active else '¿Activar?' }}">
+        <i class="ti ti-{{ 'toggle-right' if employee.is_active else 'toggle-left' }}"></i>
+        {{ 'Desactivar' if employee.is_active else 'Activar' }}
+      </button>
+    </form>
+    <a href="{{ url_for('personal.index') }}" class="btn btn-ghost">
+      <i class="ti ti-arrow-left"></i>
+    </a>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start">
+
+  <!-- Lado izquierdo: info + costos -->
+  <div>
+    <!-- Resumen top -->
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+      <div class="kpi-card">
+        <div class="kpi-label">Costo mensual</div>
+        <div class="kpi-value orange">{{ employee.total_monthly_cost | currency }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Costo/hora</div>
+        <div class="kpi-value">{{ employee.cost_per_hour | round(2) }}</div>
+        <div class="kpi-sub">S/ por hora</div>
+      </div>
+      <div class="kpi-card {{ 'success' if employee.is_active else 'danger' }}">
+        <div class="kpi-label">Estado</div>
+        <div class="kpi-value">{{ 'Activo' if employee.is_active else 'Inactivo' }}</div>
+        <div class="kpi-sub">{{ employee.labor_type }}</div>
+      </div>
+    </div>
+
+    <div class="card mb-2">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-user" style="color:var(--primary)"></i> Información general</span>
+      </div>
+      <div class="card-body">
+        <table class="table" style="font-size:13px">
+          <tbody>
+            <tr><td style="width:40%;color:var(--text-secondary)">Cargo</td><td>{{ employee.position_name or '—' }}</td></tr>
+            <tr><td style="color:var(--text-secondary)">Tipo MOD</td>
+                <td><span class="badge badge-{{ 'success' if employee.labor_type == 'MOD' else ('info' if employee.labor_type == 'MOI' else 'neutral') }}">{{ employee.labor_type }}</span></td></tr>
+            <tr><td style="color:var(--text-secondary)">Contrato</td><td>{{ employee.contract_type }}</td></tr>
+            <tr><td style="color:var(--text-secondary)">Ingreso</td><td>{{ employee.start_date or '—' }}</td></tr>
+            <tr><td style="color:var(--text-secondary)">En planilla</td>
+                <td><span class="badge {{ 'badge-success' if employee.in_payroll else 'badge-neutral' }}">{{ 'Sí' if employee.in_payroll else 'No' }}</span></td></tr>
+            <tr><td style="color:var(--text-secondary)">Horas disponibles/mes</td><td>{{ employee.available_hours_month }} h</td></tr>
+            {% if employee.notes %}
+            <tr><td style="color:var(--text-secondary)">Notas</td><td>{{ employee.notes }}</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lado derecho: desglose de costos -->
+  <div>
+    <div class="card mb-2">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-receipt" style="color:var(--primary)"></i> Desglose de planilla</span>
+      </div>
+      <div class="card-body">
+        <table class="table" style="font-size:13px">
+          <tbody>
+            <tr><td>Sueldo básico</td><td class="number">{{ employee.basic_salary | currency }}</td></tr>
+            {% if employee.bonus %}<tr><td>Bonificaciones</td><td class="number">{{ employee.bonus | currency }}</td></tr>{% endif %}
+            {% if employee.family_allowance %}<tr><td>Asig. familiar</td><td class="number">{{ employee.family_allowance | currency }}</td></tr>{% endif %}
+            <tr style="background:var(--bg-secondary)">
+              <td>Gratificación mensualizada (÷6)</td>
+              <td class="number">{{ employee.gratification_monthly | currency }}</td>
+            </tr>
+            <tr style="background:var(--bg-secondary)">
+              <td>CTS mensualizada</td>
+              <td class="number">{{ employee.cts_monthly | currency }}</td>
+            </tr>
+            <tr style="background:var(--bg-secondary)">
+              <td>Essalud (9%)</td>
+              <td class="number">{{ employee.essalud | currency }}</td>
+            </tr>
+            {% if employee.sctr %}
+            <tr style="background:var(--bg-secondary)">
+              <td>SCTR</td>
+              <td class="number">{{ employee.sctr | currency }}</td>
+            </tr>
+            {% endif %}
+            {% if employee.other_benefits %}
+            <tr><td>Otros beneficios</td><td class="number">{{ employee.other_benefits | currency }}</td></tr>
+            {% endif %}
+            <tr style="background:var(--primary-xlight);font-weight:700;font-size:14px">
+              <td>COSTO TOTAL / MES</td>
+              <td class="number text-orange">{{ employee.total_monthly_cost | currency }}</td>
+            </tr>
+            <tr style="border-top:2px solid var(--primary)">
+              <td style="font-weight:600">Costo por hora (÷ {{ employee.available_hours_month }}h)</td>
+              <td class="number fw-600">S/ {{ employee.cost_per_hour | round(4) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Asignaciones a actividades -->
+    {% if assignments %}
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-arrows-split" style="color:var(--primary)"></i> Asignado a actividades</span>
+      </div>
+      <div class="table-wrap">
+        <table class="table" style="font-size:13px">
+          <thead>
+            <tr><th>Actividad</th><th>Centro</th><th class="number">%</th><th class="number">Horas</th><th class="number">Costo</th></tr>
+          </thead>
+          <tbody>
+            {% for a in assignments %}
+            <tr>
+              <td>{{ a.activity_name }}</td>
+              <td>{{ a.center_name }}</td>
+              <td class="number">{{ a.assignment_pct }}%</td>
+              <td class="number">{{ a.hours_assigned }}</td>
+              <td class="number">{{ a.cost_assigned | currency }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Acción IA -->
+    <div class="card mt-2" style="margin-top:16px">
+      <div class="card-body" style="text-align:center;padding:16px">
+        <button class="btn btn-ghost w-100"
+                onclick="CostosChatbox.sendQuick('¿Este costo de S/ {{ employee.total_monthly_cost }} para {{ employee.labor_type }} es razonable para el sector {{ current_sector }}?', 'general')">
+          <i class="ti ti-robot"></i> Consultar IA sobre este costo
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

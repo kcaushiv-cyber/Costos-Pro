@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo Presupuesto{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('budgets.index') }}">Presupuestos</a> / Nuevo{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Nuevo Presupuesto</h1></div>
+  <div class="page-actions"><a href="{{ url_for('budgets.index') }}" class="btn btn-secondary"><i class="ti ti-arrow-left"></i> Volver</a></div>
+</div>
+<div style="max-width:480px">
+<div class="card"><div class="card-body">
+  <form method="POST" action="{{ url_for('budgets.new') }}">
+    <div class="form-group">
+      <label class="form-label">Nombre del presupuesto <span class="required">*</span></label>
+      <input type="text" name="name" class="form-control" required
+             placeholder="Ej: Presupuesto Operativo Anual 2025">
+    </div>
+    <div style="padding:12px;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:18px;font-size:12px;color:var(--text-secondary)">
+      <i class="ti ti-info-circle" style="color:var(--primary)"></i>
+      Se creará para el período activo: <strong>{{ current_period or 'Sin período' }}</strong>.<br>
+      Después podrás agregar ventas, producción, MOD, CIF, deuda y generar el flujo de caja.
+    </div>
+    <div style="display:flex;gap:10px">
+      <button type="submit" class="btn btn-primary"><i class="ti ti-plus"></i> Crear presupuesto</button>
+      <a href="{{ url_for('budgets.index') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+</div>
+{% endblock %}

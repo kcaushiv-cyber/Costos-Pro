@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block title %}Editar Actividad{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('activities.index') }}">Actividades</a> / Editar{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">Editar Actividad</h1><p class="page-subtitle">{{ activity.name }} · {{ activity.center_name }}</p></div>
+  <div class="page-actions"><a href="{{ url_for('activities.index') }}" class="btn btn-secondary"><i class="ti ti-arrow-left"></i> Volver</a></div>
+</div>
+
+<div class="grid-2" style="align-items:start">
+  <!-- Editar actividad -->
+  <div class="card">
+    <div class="card-header"><span class="card-title"><i class="ti ti-activity" style="color:var(--primary)"></i> Datos de la actividad</span></div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('activities.edit', aid=activity.id) }}">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Código</label><input type="text" name="code" class="form-control" required value="{{ activity.code }}"></div>
+          <div class="form-group"><label class="form-label">Centro</label>
+            <select name="center_id" class="form-control">{% for c in centers %}<option value="{{ c.id }}" {% if activity.center_id==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Nombre</label><input type="text" name="name" class="form-control" required value="{{ activity.name }}"></div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Tipo de inductor</label>
+            <select name="driver_type" class="form-control">
+              <option value="">Sin inductor</option>
+              {% for v,l in driver_types %}<option value="{{ v }}" {% if activity.driver_type==v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Total del inductor</label><input type="number" name="driver_total" class="form-control" step="0.01" min="0" value="{{ activity.driver_total or 0 }}"></div>
+          <div class="form-group"><label class="form-label">Costo total asignado</label><input type="number" name="total_cost" class="form-control" step="0.01" min="0" value="{{ activity.total_cost or 0 }}"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Notas</label><textarea name="notes" class="form-control" rows="2">{{ activity.notes or '' }}</textarea></div>
+        <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy"></i> Guardar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Asignación de empleados -->
+  <div>
+    <div class="card mb-2">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-users" style="color:var(--primary)"></i> Empleados asignados</span>
+        <span class="help-btn"
+          data-help="Asigna empleados a esta actividad indicando el % de su tiempo que dedican a ella. El sistema calcula automáticamente las horas y el costo asignado."
+          data-help-title="Asignación de empleados">?</span>
+      </div>
+      {% if assignments %}
+      <div class="table-wrap">
+        <table class="table" style="font-size:13px">
+          <thead><tr><th>Empleado</th><th>Tipo</th><th class="number">%</th><th class="number">Horas</th><th class="number">Costo</th><th class="actions">Acciones</th></tr></thead>
+          <tbody>
+            {% for a in assignments %}
+            <tr>
+              <td><div style="font-weight:500">{{ a.full_name }}</div><div style="font-size:11px;color:var(--text-secondary)">{{ a.emp_code }}</div></td>
+              <td><span class="badge badge-{{ 'success' if a.labor_type=='MOD' else 'neutral' }}">{{ a.labor_type }}</span></td>
+              <td class="number">{{ a.assignment_pct }}%</td>
+              <td class="number">{{ a.hours_assigned | round(1) }}</td>
+              <td class="number">{{ a.cost_assigned | currency }}</td>
+              <td class="actions">
+                <form method="POST" action="{{ url_for('activities.delete_assignment', aid=activity.id, assignment_id=a.id) }}" style="display:inline">
+                  <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar esta asignación?"><i class="ti ti-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr style="background:var(--bg-secondary);font-weight:600">
+              <td colspan="3">Total</td>
+              <td class="number">{{ assignments|sum(attribute='hours_assigned') | round(1) }} h</td>
+              <td class="number">{{ assignments|sum(attribute='cost_assigned') | currency }}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body" style="text-align:center;padding:20px;color:var(--text-secondary);font-size:13px">
+        Sin empleados asignados
+      </div>
+      {% endif %}
+      <!-- Agregar empleado -->
+      <div class="card-footer">
+        <form method="POST" action="{{ url_for('activities.assign_employee', aid=activity.id) }}" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group mb-0" style="flex:2">
+            <label class="form-label">Empleado</label>
+            <select name="employee_id" class="form-control">
+              <option value="">Seleccionar...</option>
+              {% for e in employees %}
+                <option value="{{ e.id }}">{{ e.full_name }} ({{ e.labor_type }}, S/{{ e.cost_per_hour }}/h)</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">% dedicación</label>
+            <input type="number" name="assignment_pct" class="form-control" style="width:80px" step="1" min="1" max="100" value="100">
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="ti ti-plus"></i> Asignar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

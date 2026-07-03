@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}Productos y Servicios{% endblock %}
+{% block breadcrumb %}Productos y Servicios{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Productos y Servicios</h1>
+    <p class="page-subtitle">Catálogo de productos, servicios, semielaborados y materias primas</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('products.units') }}" class="btn btn-secondary btn-sm">
+      <i class="ti ti-rulers"></i> Unidades de medida
+    </a>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('products')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+        <a href="{{ url_for('products.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Nuevo
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-package" style="color:var(--primary)"></i> Catálogo</span>
+    <form method="GET" style="display:flex;gap:8px;align-items:center">
+      <div class="search-box">
+        <i class="ti ti-search"></i>
+        <input type="text" name="search" value="{{ search }}" placeholder="Buscar por nombre o código...">
+      </div>
+      <select name="category" class="form-control" style="width:auto;padding:8px 12px">
+        <option value="">Todas las categorías</option>
+        {% for v,l in [('producto','Producto'),('servicio','Servicio'),('semielaborado','Semielaborado'),('materia_prima','Materia Prima')] %}
+          <option value="{{ v }}" {% if cat_filter == v %}selected{% endif %}>{{ l }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-secondary btn-sm"><i class="ti ti-search"></i></button>
+    </form>
+  </div>
+
+  {% if products %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Código</th><th>Nombre</th><th>Categoría</th>
+          <th>Unidad</th>
+          <th class="number">Precio venta</th>
+          <th class="number">Costo estándar</th>
+          <th>Estado</th>
+          <th class="actions">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td><span class="badge badge-neutral">{{ p.code }}</span></td>
+          <td style="font-weight:500">{{ p.name }}</td>
+          <td>
+            <span class="badge {{ 'badge-primary' if p.category=='producto' else ('badge-info' if p.category=='servicio' else 'badge-neutral') }}">
+              {{ p.category|replace('_',' ')|title }}
+            </span>
+          </td>
+          <td>{{ p.unit_name or '—' }}</td>
+          <td class="number">{{ p.sale_price | currency }}</td>
+          <td class="number">{{ p.standard_cost | currency }}</td>
+          <td>
+            <span class="badge {{ 'badge-success' if p.is_active else 'badge-neutral' }}">
+              {{ 'Activo' if p.is_active else 'Inactivo' }}
+            </span>
+          </td>
+          <td class="actions">
+            <a href="{{ url_for('products.edit', pid=p.id) }}" class="btn btn-ghost btn-sm btn-icon" title="Editar">
+              <i class="ti ti-edit"></i>
+            </a>
+            <form method="POST" action="{{ url_for('products.delete', pid=p.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-ghost btn-sm btn-icon"
+                      data-confirm="¿Desactivar este producto?" title="Desactivar">
+                <i class="ti ti-trash"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="ti ti-package"></i>
+    <h3>Sin productos registrados</h3>
+    <p>Agrega productos o servicios para usarlos en los módulos de costos.</p>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('products')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+        <a href="{{ url_for('products.new') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Agregar producto
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}Inventario / Kardex{% endblock %}
+{% block breadcrumb %}Inventario / Kardex{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Inventario / Kardex</h1>
+    <p class="page-subtitle">Control de stock valorizado por costo promedio ponderado</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('kardex.export_kardex') }}" class="btn btn-secondary btn-sm">
+      <i class="ti ti-file-spreadsheet"></i> Exportar Excel
+    </a>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('kardex')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+    <a href="{{ url_for('kardex.new_item') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Nuevo ítem
+    </a>
+  </div>
+</div>
+
+<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+  <div class="kpi-card">
+    <i class="ti ti-box kpi-icon"></i>
+    <div class="kpi-label">Ítems activos</div>
+    <div class="kpi-value orange">{{ items|length }}</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-coin kpi-icon"></i>
+    <div class="kpi-label">Stock valorizado</div>
+    <div class="kpi-value">{{ total_value | currency }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Método</div>
+    <div class="kpi-value" style="font-size:16px">Costo Promedio</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-box" style="color:var(--primary)"></i> Ítems de inventario</span>
+    <form method="GET" style="display:flex;gap:8px;align-items:center">
+      <div class="search-box">
+        <i class="ti ti-search"></i>
+        <input type="text" name="search" value="{{ search }}" placeholder="Buscar por nombre o código...">
+      </div>
+      <select name="category" class="form-control" style="width:auto;padding:8px 12px">
+        <option value="">Todas las categorías</option>
+        {% for v,l in [('insumo','Insumo'),('producto','Producto'),('semielaborado','Semielaborado'),('activo','Activo')] %}
+          <option value="{{ v }}" {% if cat_filter==v %}selected{% endif %}>{{ l }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-secondary btn-sm"><i class="ti ti-search"></i></button>
+    </form>
+  </div>
+
+  {% if items %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Código</th><th>Nombre</th><th>Categoría</th>
+          <th>Unidad</th>
+          <th class="number">Stock actual</th>
+          <th class="number">Costo prom.</th>
+          <th class="number">Valor total</th>
+          <th class="actions">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        {% set valor = (item.current_stock or 0) * (item.average_cost or 0) %}
+        <tr>
+          <td><span class="badge badge-neutral">{{ item.code }}</span></td>
+          <td style="font-weight:500">{{ item.name }}</td>
+          <td><span class="badge badge-primary">{{ item.category }}</span></td>
+          <td>{{ item.unit_code or '—' }}</td>
+          <td class="number">
+            {{ item.current_stock or 0 }}
+            {% if item.safety_stock and (item.current_stock or 0) < item.safety_stock %}
+              <span class="badge badge-danger" title="Bajo stock mínimo">!</span>
+            {% endif %}
+          </td>
+          <td class="number">{{ (item.average_cost or 0) | currency }}</td>
+          <td class="number"><strong>{{ valor | currency }}</strong></td>
+          <td class="actions">
+            <a href="{{ url_for('kardex.item_detail', item_id=item.id) }}"
+               class="btn btn-primary btn-sm">
+              <i class="ti ti-eye"></i> Ver / Mover
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--bg-secondary);font-weight:600">
+          <td colspan="6">Total valorizado</td>
+          <td class="number">{{ total_value | currency }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="ti ti-box"></i>
+    <h3>Sin ítems de inventario</h3>
+    <p>Registra el primer ítem para comenzar a llevar el kardex.</p>
+    <button class="btn btn-secondary btn-sm" onclick="AIGenerator.show('kardex')">
+      <i class="ti ti-robot"></i> Generar con IA
+    </button>
+    <a href="{{ url_for('kardex.new_item') }}" class="btn btn-primary">
+      <i class="ti ti-plus"></i> Nuevo ítem
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

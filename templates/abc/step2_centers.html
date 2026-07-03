@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block title %}ABC Paso 2 — Centros{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('abc.index') }}">ABC</a> / {{ model.name }} / Paso 2{% endblock %}
+
+{% block extra_css %}
+<style>
+.step-nav{display:flex;gap:8px;margin-bottom:24px}
+.step-item{flex:1;padding:10px 14px;border-radius:var(--radius-md);font-size:13px;font-weight:500;text-align:center}
+.step-item.active{background:var(--primary);color:#fff}
+.step-item.done{background:var(--success-bg);color:var(--success-text);border:1px solid #bbf7d0}
+.step-item.pending{background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border)}
+.amt-cell{font-size:13px;font-weight:600;color:var(--primary)}
+.pct-cell{font-size:11px;color:var(--text-secondary)}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><h1 class="page-title">{{ model.name }}</h1><p class="page-subtitle">Paso 2 de 3 — Distribución de Centros a Actividades</p></div>
+</div>
+
+<div class="step-nav">
+  <div class="step-item done"><a href="{{ url_for('abc.step1_resources', mid=model.id) }}" style="color:inherit;text-decoration:none">✓ Recursos → Centros</a></div>
+  <div class="step-item active">2. Centros → Actividades</div>
+  <div class="step-item pending"><a href="{{ url_for('abc.step3_objects', mid=model.id) }}" style="color:inherit;text-decoration:none">3. Actividades → Objetos</a></div>
+  <div class="step-item pending">4. Resultados</div>
+</div>
+
+<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+  <div class="kpi-card"><div class="kpi-label">Centros</div><div class="kpi-value orange">{{ centers|length }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">Actividades</div><div class="kpi-value">{{ activities|length }}</div></div>
+  <div class="kpi-card"><div class="kpi-label">Asignaciones</div><div class="kpi-value">{{ existing|length }}</div></div>
+</div>
+
+{% if not centers or not activities %}
+<div class="alert alert-warning"><i class="ti ti-alert-triangle"></i>
+  {% if not centers %}Crea <a href="{{ url_for('activity_centers.new') }}">Centros de Actividad</a>.{% endif %}
+  {% if not activities %}Crea <a href="{{ url_for('activities.new') }}">Actividades</a>.{% endif %}
+</div>
+{% else %}
+
+{% if existing %}
+<div class="card mb-2" style="margin-bottom:20px">
+  <div class="card-header"><span class="card-title"><i class="ti ti-check" style="color:var(--success)"></i> Asignaciones guardadas</span></div>
+  <div class="table-wrap"><table class="table" style="font-size:13px">
+    <thead><tr><th>Centro</th><th>Actividad</th><th class="number">Inductor</th><th class="number">%</th><th class="number">Monto</th><th class="actions">Acciones</th></tr></thead>
+    <tbody>
+      {% for e in existing %}
+      <tr>
+        <td>{{ e.center_name }}</td><td>{{ e.act_name }}</td>
+        <td class="number">{{ e.driver_quantity }}</td>
+        <td class="pct-cell number">{{ e.driver_percentage | round(1) }}%</td>
+        <td class="amt-cell number">{{ e.allocated_amount | currency }}</td>
+        <td class="actions">
+          <form method="POST" action="{{ url_for('abc.delete_step2_allocation', mid=model.id, allocation_id=e.id) }}" style="display:inline">
+            <button type="submit" class="btn btn-ghost btn-sm btn-icon" data-confirm="¿Eliminar esta asignación?"><i class="ti ti-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header"><span class="card-title"><i class="ti ti-plus" style="color:var(--primary)"></i> Agregar asignación</span></div>
+  <div class="card-body">
+    <div class="form-grid-3" style="align-items:flex-end;gap:12px">
+      <div class="form-group mb-0"><label class="form-label">Centro de actividad</label>
+        <select id="sel-center" class="form-control">{% for c in centers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+      </div>
+      <div class="form-group mb-0"><label class="form-label">Actividad</label>
+        <select id="sel-activity" class="form-control">{% for a in activities %}<option value="{{ a.id }}" data-center="{{ a.center_id }}">{{ a.name }} ({{ a.center_name }})</option>{% endfor %}</select>
+      </div>
+      <div class="form-group mb-0"><label class="form-label">Cantidad del inductor</label>
+        <input type="number" id="inp-driver" class="form-control" step="0.01" min="0" value="0">
+      </div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="saveAlloc()"><i class="ti ti-device-floppy"></i> Guardar</button>
+      <a href="{{ url_for('abc.step3_objects', mid=model.id) }}" class="btn btn-secondary">Ir al Paso 3 <i class="ti ti-arrow-right"></i></a>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const MODEL_ID = {{ model.id }};
+async function saveAlloc() {
+  const center_id   = document.getElementById('sel-center').value;
+  const activity_id = document.getElementById('sel-activity').value;
+  const driver_qty  = parseFloat(document.getElementById('inp-driver').value || 0);
+  const res = await fetch(`/abc/${MODEL_ID}/step2`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({allocations:[{center_id,activity_id,driver_qty}]})
+  });
+  const data = await res.json();
+  if (data.success) { showToast('Guardado','success'); setTimeout(()=>location.reload(),600); }
+  else showToast('Error','error');
+}
+</script>
+{% endblock %}

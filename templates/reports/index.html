@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% block title %}Reportes{% endblock %}
+{% block breadcrumb %}Reportes{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Reportes Gerenciales</h1>
+    <p class="page-subtitle">Análisis consolidado de todas las fases — {{ current_company }} · {{ current_period }}</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-primary" id="btn-narrative" onclick="generateNarrative()">
+      <i class="ti ti-robot"></i> Generar reporte IA
+    </button>
+  </div>
+</div>
+
+<!-- KPIs ejecutivos -->
+<div class="kpi-grid" style="margin-bottom:28px">
+  <div class="kpi-card">
+    <i class="ti ti-trending-up kpi-icon"></i>
+    <div class="kpi-label">Ventas proyectadas</div>
+    <div class="kpi-value orange">{{ summary.presupuesto.ventas | currency }}</div>
+  </div>
+  <div class="kpi-card {{ 'success' if summary.presupuesto.margen_pct >= 20 else ('warning' if summary.presupuesto.margen_pct >= 10 else 'danger') }}">
+    <i class="ti ti-percentage kpi-icon"></i>
+    <div class="kpi-label">Margen bruto</div>
+    <div class="kpi-value">{{ summary.presupuesto.margen_pct }}%</div>
+    <div class="kpi-sub">{{ summary.presupuesto.utilidad | currency }}</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-users kpi-icon"></i>
+    <div class="kpi-label">Planilla mensual</div>
+    <div class="kpi-value">{{ summary.personal.costo_mes | currency }}</div>
+    <div class="kpi-sub">{{ summary.personal.total }} trabajadores</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-box kpi-icon"></i>
+    <div class="kpi-label">Stock valorizado</div>
+    <div class="kpi-value">{{ summary.inventario.valor | currency }}</div>
+    {% if summary.inventario.bajo_minimo %}
+    <div class="kpi-sub" style="color:var(--danger)">⚠ {{ summary.inventario.bajo_minimo }} bajo mínimo</div>
+    {% endif %}
+  </div>
+  <div class="kpi-card {{ 'danger' if summary.calidad.pct_fallas > 40 else 'warning' if summary.calidad.pct_fallas > 20 else 'success' }}">
+    <i class="ti ti-shield-check kpi-icon"></i>
+    <div class="kpi-label">Costo de calidad</div>
+    <div class="kpi-value">{{ summary.calidad.total | currency }}</div>
+    <div class="kpi-sub">{{ summary.calidad.pct_fallas }}% en fallas</div>
+  </div>
+  <div class="kpi-card">
+    <i class="ti ti-calculator kpi-icon"></i>
+    <div class="kpi-label">Modelos ABC calc.</div>
+    <div class="kpi-value">{{ summary.abc.modelos }}</div>
+    <div class="kpi-sub">{{ summary.proceso.modelos_calculados }} modelos proceso</div>
+  </div>
+</div>
+
+<!-- Narrativa IA -->
+<div id="narrative-card" style="display:none" class="card mb-2" style="margin-bottom:20px">
+  <div class="card-header">
+    <span class="card-title"><i class="ti ti-robot" style="color:var(--primary)"></i> Análisis Gerencial IA</span>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('narrative-card').style.display='none'">
+      <i class="ti ti-x"></i>
+    </button>
+  </div>
+  <div class="card-body">
+    <div id="narrative-text" style="font-size:13.5px;line-height:1.8;color:var(--text-primary)"></div>
+  </div>
+</div>
+
+<!-- Grid de 6 reportes -->
+<div class="grid-2">
+  {% set reportes = [
+    ('executive',     'Resumen Ejecutivo',      'ti-layout-dashboard', 'KPIs consolidados de todos los módulos con análisis de rentabilidad'),
+    ('cost-structures','Estructuras de Costos', 'ti-chart-treemap',    'Desglose MP + MOD + CIF + gastos por producto o servicio'),
+    ('abc',           'Costeo ABC',             'ti-calculator',       'Comparativa ABC vs Tradicional por objeto de costo'),
+    ('labor',         'Personal y MOD',         'ti-users',            'Planilla, costos por tipo y utilización de horas'),
+    ('inventory',     'Inventario',             'ti-box',              'Stock valorizado, alertas y últimos movimientos'),
+    ('quality',       'Costos de Calidad PAF',  'ti-shield-check',     'Distribución Prevención / Evaluación / Fallas'),
+  ] %}
+
+  {% for rtype, rlabel, ricon, rdesc in reportes %}
+  <div class="card">
+    <div class="card-body">
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px">
+        <div style="width:44px;height:44px;background:var(--primary-xlight);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="ti {{ ricon }}" style="font-size:20px;color:var(--primary)"></i>
+        </div>
+        <div>
+          <div style="font-size:15px;font-weight:600;margin-bottom:4px">{{ rlabel }}</div>
+          <div style="font-size:12px;color:var(--text-secondary)">{{ rdesc }}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <a href="{{ url_for('reports.' + rtype.replace('-','_')) }}" class="btn btn-primary btn-sm">
+          <i class="ti ti-eye"></i> Ver reporte
+        </a>
+        <a href="{{ url_for('reports.export_excel', report_type=rtype) }}" class="btn btn-secondary btn-sm">
+          <i class="ti ti-file-spreadsheet"></i> Excel
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function generateNarrative() {
+  const btn = document.getElementById('btn-narrative');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Generando...';
+
+  const card = document.getElementById('narrative-card');
+  const text = document.getElementById('narrative-text');
+  card.style.display = 'block';
+  text.innerHTML = '<i class="ti ti-dots" style="animation:blink 1s infinite"></i> El agente de reportes está analizando los datos...';
+
+  try {
+    const res  = await fetch('/reports/ai-narrative', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_type: 'executive' })
+    });
+    const data = await res.json();
+    if (data.success) {
+      text.innerHTML = (window.renderMarkdown || (t => t.replace(/\n/g,'<br>')))(data.response);
+      if (window.CostosProVoice?.isEnabled()) {
+        window.CostosProVoice.speak(data.response.substring(0, 300), true);
+      }
+    } else {
+      text.innerHTML = `<span style="color:var(--danger)">Error: ${data.error}</span>`;
+    }
+  } catch(e) {
+    text.innerHTML = '<span style="color:var(--danger)">Error de conexión con la IA</span>';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-robot"></i> Generar reporte IA';
+}
+
+setTimeout(() => window.CostosProVoice?.sayModule('dashboard'), 800);
+</script>
+{% endblock %}
